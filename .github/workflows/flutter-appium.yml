@@ -1,0 +1,230 @@
+name: 🧪 Flutter E2E Appium Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      device_name:
+        description: 'Android AVD name'
+        required: false
+        default: 'Pixel_6_API_33'
+
+env:
+  JAVA_VERSION: '17'
+  NODE_VERSION: '20'
+  API_LEVEL: '33'
+  AVD_NAME: 'Pixel_6_API_33'
+  ABI: 'x86_64'
+  TARGET: 'google_apis'
+
+jobs:
+  flutter-e2e-tests:
+    name: 🤖 Run Flutter E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      # ─── Step 1: Checkout ─────────────────────────────────────────────────
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      # ─── Step 2: Setup Java ───────────────────────────────────────────────
+      - name: ☕ Setup Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      # ─── Step 3: Setup Node.js ────────────────────────────────────────────
+      - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: e2e/package-lock.json
+
+      # ─── Step 4: Setup Android SDK ────────────────────────────────────────
+      - name: 🤖 Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: true
+
+      - name: 📦 Install Android SDK Components
+        run: |
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-${{ env.API_LEVEL }}" \
+            "build-tools;33.0.2" \
+            "system-images;android-${{ env.API_LEVEL }};${{ env.TARGET }};${{ env.ABI }}" \
+            "emulator"
+          echo "Android SDK setup complete"
+
+      # ─── Step 5: Create AVD ───────────────────────────────────────────────
+      - name: 📱 Create Android Virtual Device
+        run: |
+          echo "no" | avdmanager create avd \
+            --force \
+            --name "${{ env.AVD_NAME }}" \
+            --abi "${{ env.TARGET }}/${{ env.ABI }}" \
+            --package "system-images;android-${{ env.API_LEVEL }};${{ env.TARGET }};${{ env.ABI }}" \
+            --device "pixel_6"
+          echo "AVD created: ${{ env.AVD_NAME }}"
+
+      # ─── Step 6: Start Emulator ───────────────────────────────────────────
+      - name: 🚀 Start Android Emulator
+        run: |
+          $ANDROID_HOME/emulator/emulator \
+            -avd "${{ env.AVD_NAME }}" \
+            -no-audio \
+            -no-window \
+            -gpu swiftshader_indirect \
+            -no-snapshot \
+            -no-boot-anim \
+            -memory 3072 \
+            &
+          echo "Emulator launched in background"
+
+      - name: ⏳ Wait for Emulator to Boot
+        run: |
+          echo "Waiting for emulator boot..."
+          adb wait-for-device
+          # Poll boot_completed property
+          TIMEOUT=300
+          ELAPSED=0
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            BOOT=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
+            if [ "$BOOT" = "1" ]; then
+              echo "✅ Emulator booted successfully"
+              break
+            fi
+            echo "Waiting... ($ELAPSED/${TIMEOUT}s)"
+            sleep 5
+            ELAPSED=$((ELAPSED + 5))
+          done
+          # Unlock screen
+          adb shell input keyevent 82
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb devices -l
+
+      # ─── Step 7: Install Appium 2.x ──────────────────────────────────────
+      - name: 🔧 Install Appium 2.x and Drivers
+        run: |
+          npm install -g appium@latest
+          appium driver install uiautomator2
+          appium driver install flutter
+          appium plugin install execute-driver
+          appium --version
+          echo "Appium installation complete"
+
+      # ─── Step 8: Install E2E Dependencies ────────────────────────────────
+      - name: 📦 Install E2E Node Dependencies
+        working-directory: e2e
+        run: |
+          npm ci
+          echo "E2E dependencies installed"
+
+      # ─── Step 9: Setup Environment & Install APK ─────────────────────────
+      - name: ⚙️ Configure Test Environment
+        working-directory: e2e
+        run: |
+          cp .env.example .env
+          sed -i 's/DEVICE_NAME=.*/DEVICE_NAME=emulator-5554/' .env
+          sed -i 's/PLATFORM_VERSION=.*/PLATFORM_VERSION=13.0/' .env
+          cat .env
+        env:
+          TEST_EMAIL:    ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+
+      - name: 📲 Install APK on Emulator
+        run: |
+          if [ -f "e2e/app/app-release.apk" ]; then
+            adb install -r e2e/app/app-release.apk
+            echo "✅ APK installed"
+          else
+            echo "⚠️ APK not found at e2e/app/app-release.apk"
+            echo "Skipping APK install — tests may use pre-installed app"
+          fi
+
+      # ─── Step 10: Start Appium Server ────────────────────────────────────
+      - name: 🖥️ Start Appium Server
+        run: |
+          appium \
+            --port 4723 \
+            --log-level info \
+            --use-plugins execute-driver \
+            --allow-cors \
+            &
+          sleep 8
+          curl -s http://localhost:4723/status | python3 -m json.tool | head -20
+          echo "Appium server running"
+
+      # ─── Step 11: Run E2E Tests ───────────────────────────────────────────
+      - name: 🧪 Run E2E Tests
+        working-directory: e2e
+        continue-on-error: true
+        run: |
+          npm run test:all 2>&1 | tee ../test-output.log
+        env:
+          TEST_EMAIL:    ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          APK_PATH:      ./app/app-release.apk
+          APP_PACKAGE:   com.company.app
+          APP_ACTIVITY:  com.company.app.MainActivity
+          DEVICE_NAME:   emulator-5554
+          PLATFORM_VERSION: "13.0"
+
+      # ─── Step 12: Generate Excel Report ───────────────────────────────────
+      - name: 📊 Generate Excel Report
+        working-directory: e2e
+        if: always()
+        run: |
+          node -e "
+            const reporter = require('./reporters/excel.reporter');
+            reporter.generateReport().then(p => {
+              console.log('Excel report generated:', p);
+            }).catch(err => {
+              console.error('Report generation failed:', err.message);
+            });
+          "
+
+      # ─── Step 13: Collect Artifacts ───────────────────────────────────────
+      - name: 📁 Upload Test Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: flutter-e2e-results-${{ github.run_number }}
+          path: |
+            e2e/reports/
+            test-output.log
+          retention-days: 30
+
+      - name: 📸 Upload Screenshots on Failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: failure-screenshots-${{ github.run_number }}
+          path: e2e/reports/failures/
+          retention-days: 30
+
+      # ─── Step 14: Test Summary ────────────────────────────────────────────
+      - name: 📋 Print Test Summary
+        if: always()
+        run: |
+          echo "## 🧪 Test Run Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Run # | ${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Device | Pixel 6 Emulator (API 33) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Report | flutter-e2e-results-${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
+          if [ -f "e2e/reports/Flutter_E2E_Report.xlsx" ]; then
+            echo "| Excel Report | ✅ Generated |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Excel Report | ⚠️ Not found |" >> $GITHUB_STEP_SUMMARY
+          fi

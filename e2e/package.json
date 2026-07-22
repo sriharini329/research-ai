@@ -1,0 +1,51 @@
+{
+  "name": "research-ai-e2e",
+  "version": "1.0.0",
+  "description": "Production-ready E2E Appium 2.x automation framework for Research AI Flutter Android app",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha",
+    "test:auth": "mocha tests/auth/**/*.test.js",
+    "test:dashboard": "mocha tests/dashboard/**/*.test.js",
+    "test:upload": "mocha tests/upload/**/*.test.js",
+    "test:library": "mocha tests/library/**/*.test.js",
+    "test:navigation": "mocha tests/navigation/**/*.test.js",
+    "test:all": "mocha tests/**/**/*.test.js",
+    "report:excel": "node reporters/excel.reporter.js",
+    "appium:start": "appium --use-plugins=execute-driver,appium-flutter-driver --allow-insecure chromedriver_autodownload",
+    "device:list": "adb devices -l"
+  },
+  "dependencies": {
+    "webdriverio": "^8.39.1",
+    "appium": "^2.11.3",
+    "appium-uiautomator2-driver": "^3.7.8",
+    "appium-flutter-driver": "^0.0.37",
+    "exceljs": "^4.4.0",
+    "winston": "^3.13.1",
+    "winston-daily-rotate-file": "^5.0.0",
+    "dotenv": "^16.4.5",
+    "fs-extra": "^11.2.0",
+    "moment": "^2.30.1",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "mocha": "^10.7.3",
+    "chai": "^4.4.1",
+    "mochawesome": "^7.1.3",
+    "mochawesome-merge": "^4.3.0",
+    "mochawesome-report-generator": "^6.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "appium",
+    "flutter",
+    "e2e",
+    "automation",
+    "android",
+    "mocha"
+  ],
+  "author": "QA Automation Team",
+  "license": "MIT"
+}
