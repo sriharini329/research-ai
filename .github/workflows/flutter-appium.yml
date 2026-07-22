@@ -14,7 +14,7 @@ on:
 
 env:
   JAVA_VERSION: '17'
-  NODE_VERSION: '20'
+  NODE_VERSION: '24'
   API_LEVEL: '33'
   AVD_NAME: 'Pixel_6_API_33'
   ABI: 'x86_64'
