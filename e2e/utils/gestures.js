@@ -187,6 +187,11 @@ class GestureUtils {
     } catch (_) { /* keyboard may already be hidden */ }
   }
 
+  // ─── Public swipeCoords (usable from page objects) ────────────────────────
+  async swipeCoords(startX, startY, endX, endY, durationMs = 800) {
+    return this._swipeCoords(startX, startY, endX, endY, durationMs);
+  }
+
   // ─── Private Helpers ──────────────────────────────────────────────────────
   async _getCenter(element) {
     const loc  = await element.getLocation();

@@ -1,8 +1,6 @@
 'use strict';
 
-const DriverFactory    = require('../drivers/driver.factory');
 const excelReporter    = require('../reporters/excel.reporter');
-const ScreenshotUtils  = require('../utils/screenshot');
 const logger           = require('../utils/logger');
 const DeviceUtils      = require('../utils/device.utils');
 
@@ -11,8 +9,6 @@ const DeviceUtils      = require('../utils/device.utils');
  * Runs before/after the entire test suite.
  */
 
-let driver;
-let screenshotUtils;
 const suiteStartTime = Date.now();
 
 // ─── Root Level Before Hook ───────────────────────────────────────────────────

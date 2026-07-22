@@ -2,11 +2,20 @@
 
 const logger = require('./logger');
 
+// Try to use the official appium-flutter-finder package if available
+let nativeFinder = null;
+try {
+  nativeFinder = require('appium-flutter-finder');
+} catch (_) {
+  // Package not installed — use built-in implementations below
+}
+
 /**
  * Flutter Finder Utilities
  *
  * Provides all Flutter-specific locator strategies for Appium Flutter Driver.
- * Falls back gracefully to accessibility/XPath selectors for UiAutomator2.
+ * Uses appium-flutter-finder package when available, falls back to
+ * raw selector strings for UiAutomator2 mode.
  *
  * Usage:
  *   const { find } = require('../utils/flutter.finder');
@@ -15,7 +24,7 @@ const logger = require('./logger');
 
 class FlutterFinder {
   constructor() {
-    this.driverType = 'flutter'; // default; can be overridden
+    this.driverType = 'uiautomator2'; // default safe fallback
   }
 
   setDriverType(type) {
@@ -30,6 +39,9 @@ class FlutterFinder {
    * @param {string} key - The ValueKey string
    */
   byValueKey(key) {
+    if (this.driverType === 'flutter' && nativeFinder) {
+      return nativeFinder.find.byValueKey(key);
+    }
     if (this.driverType === 'flutter') {
       return { using: 'key', value: key };
     }
@@ -42,6 +54,9 @@ class FlutterFinder {
    * @param {string} text
    */
   byText(text) {
+    if (this.driverType === 'flutter' && nativeFinder) {
+      return nativeFinder.find.byText(text);
+    }
     if (this.driverType === 'flutter') {
       return { using: 'text', value: text };
     }
@@ -53,6 +68,9 @@ class FlutterFinder {
    * @param {string} label
    */
   bySemanticsLabel(label) {
+    if (this.driverType === 'flutter' && nativeFinder) {
+      return nativeFinder.find.bySemanticsLabel(label);
+    }
     if (this.driverType === 'flutter') {
       return { using: 'semantics label', value: label };
     }
@@ -64,6 +82,9 @@ class FlutterFinder {
    * @param {string} widgetType - e.g. 'ElevatedButton', 'TextField'
    */
   byType(widgetType) {
+    if (this.driverType === 'flutter' && nativeFinder) {
+      return nativeFinder.find.byType(widgetType);
+    }
     if (this.driverType === 'flutter') {
       return { using: 'type', value: widgetType };
     }
@@ -75,6 +96,9 @@ class FlutterFinder {
    * @param {string} tooltip
    */
   byTooltip(tooltip) {
+    if (this.driverType === 'flutter' && nativeFinder) {
+      return nativeFinder.find.byTooltip(tooltip);
+    }
     if (this.driverType === 'flutter') {
       return { using: 'tooltip', value: tooltip };
     }
@@ -129,54 +153,54 @@ class FlutterFinder {
 
   get LOGIN() {
     return {
-      emailField:        this.byText('Email'),
-      passwordField:     this.byText('Password'),
-      loginButton:       this.byText('Login'),
-      forgotPassword:    this.byText('Forgot Password?'),
-      signUpLink:        this.byText('Sign Up'),
-      welcomeText:       this.byText('Welcome Back!'),
-      loginSubText:      this.byText('Login to continue'),
+      emailField:     this.byText('Email'),
+      passwordField:  this.byText('Password'),
+      loginButton:    this.byText('Login'),
+      forgotPassword: this.byText('Forgot Password?'),
+      signUpLink:     this.byText('Sign Up'),
+      welcomeText:    this.byText('Welcome Back!'),
+      loginSubText:   this.byText('Login to continue'),
     };
   }
 
   get SIGNUP() {
     return {
-      fullNameField:     this.byText('Full Name'),
-      emailField:        this.byText('Email'),
-      passwordField:     this.byText('Password'),
-      confirmPassField:  this.byText('Confirm Password'),
-      signUpButton:      this.byText('Sign Up'),
-      loginLink:         this.byText('Login'),
-      createAccountText: this.byText('Create Account'),
+      fullNameField:    this.byText('Full Name'),
+      emailField:       this.byText('Email'),
+      passwordField:    this.byText('Password'),
+      confirmPassField: this.byText('Confirm Password'),
+      signUpButton:     this.byText('Sign Up'),
+      loginLink:        this.byText('Login'),
+      createAccountText:this.byText('Create Account'),
     };
   }
 
   get DASHBOARD() {
     return {
-      uploadCard:        this.byText('Upload Paper'),
-      askQuestionCard:   this.byText('Ask Question'),
-      findPapersCard:    this.byText('Find Papers'),
-      myLibraryCard:     this.byText('My Library'),
-      recentPapersText:  this.byText('Recent Papers'),
-      notificationsBtn:  this.byType('IconButton'),
+      uploadCard:       this.byText('Upload Paper'),
+      askQuestionCard:  this.byText('Ask Question'),
+      findPapersCard:   this.byText('Find Papers'),
+      myLibraryCard:    this.byText('My Library'),
+      recentPapersText: this.byText('Recent Papers'),
+      notificationsBtn: this.byType('IconButton'),
     };
   }
 
   get SNACKBAR() {
     return {
-      fillAllFields:     this.byText('Please fill in all fields'),
-      validEmail:        this.byText('Enter a valid email'),
-      passwordLength:    this.byText('Password must be 6+ characters'),
-      passwordMismatch:  this.byText('Passwords do not match'),
+      fillAllFields:   this.byText('Please fill in all fields'),
+      validEmail:      this.byText('Enter a valid email'),
+      passwordLength:  this.byText('Password must be 6+ characters'),
+      passwordMismatch:this.byText('Passwords do not match'),
     };
   }
 
   get NAV() {
     return {
-      homeTab:     this.byText('Home'),
-      libraryTab:  this.byText('Library'),
-      searchTab:   this.byText('Search'),
-      profileTab:  this.byText('Profile'),
+      homeTab:    this.byText('Home'),
+      libraryTab: this.byText('Library'),
+      searchTab:  this.byText('Search'),
+      profileTab: this.byText('Profile'),
     };
   }
 }

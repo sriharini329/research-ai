@@ -6,7 +6,6 @@ const fs       = require('fs-extra');
 const moment   = require('moment');
 const logger   = require('../utils/logger');
 const DeviceUtils = require('../utils/device.utils');
-const ScreenshotUtils = require('../utils/screenshot');
 
 const REPORTS_DIR = path.join(__dirname, '..', 'reports');
 fs.ensureDirSync(REPORTS_DIR);

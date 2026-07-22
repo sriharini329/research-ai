@@ -3,7 +3,6 @@
 const ScreenshotUtils = require('../utils/screenshot');
 const GestureUtils    = require('../utils/gestures');
 const logger          = require('../utils/logger');
-const { find }        = require('../utils/flutter.finder');
 
 /**
  * BasePage — Parent class for all Page Objects.

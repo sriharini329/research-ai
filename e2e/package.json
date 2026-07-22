@@ -10,16 +10,15 @@
     "test:upload": "mocha tests/upload/**/*.test.js",
     "test:library": "mocha tests/library/**/*.test.js",
     "test:navigation": "mocha tests/navigation/**/*.test.js",
-    "test:all": "mocha tests/**/**/*.test.js",
+    "test:all": "mocha \"tests/**/**/*.test.js\"",
     "report:excel": "node reporters/excel.reporter.js",
-    "appium:start": "appium --use-plugins=execute-driver,appium-flutter-driver --allow-insecure chromedriver_autodownload",
-    "device:list": "adb devices -l"
+    "appium:start": "appium --use-plugins=execute-driver --allow-insecure chromedriver_autodownload",
+    "device:list": "adb devices -l",
+    "lint": "node --check config/appium.config.js"
   },
   "dependencies": {
     "webdriverio": "^8.39.1",
-    "appium": "^2.11.3",
-    "appium-uiautomator2-driver": "^3.7.8",
-    "appium-flutter-driver": "^0.0.37",
+    "appium-flutter-finder": "^0.2.0",
     "exceljs": "^4.4.0",
     "winston": "^3.13.1",
     "winston-daily-rotate-file": "^5.0.0",

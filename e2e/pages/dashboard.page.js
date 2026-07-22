@@ -70,8 +70,14 @@ class DashboardPage extends BasePage {
 
   async pullToRefresh() {
     const { width, height } = await this.driver.getWindowSize();
-    const x = Math.floor(width / 2);
-    await this.gesture['_swipeCoords']?.(x, Math.floor(height * 0.3), x, Math.floor(height * 0.7), 600);
+    const x      = Math.floor(width / 2);
+    const startY = Math.floor(height * 0.3);
+    const endY   = Math.floor(height * 0.7);
+    try {
+      await this.gesture.swipeCoords(x, startY, x, endY, 800);
+    } catch (_) {
+      await this.gesture.scrollUp(1);
+    }
     await this.pause(2000);
     logger.logStep('DashboardPage', 'Pull to refresh', 'PASS');
   }

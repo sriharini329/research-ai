@@ -1,7 +1,7 @@
 'use strict';
 
 const { remote } = require('webdriverio');
-const { flutterCapabilities, uiAutomator2Capabilities, appiumServerConfig } = require('../config/appium.config');
+const { flutterCapabilities, uiAutomator2Capabilities, appiumServerConfig, APP_PACKAGE } = require('../config/appium.config');
 const logger = require('../utils/logger');
 const DeviceUtils = require('../utils/device.utils');
 
@@ -82,9 +82,9 @@ class DriverFactory {
   async restartApp() {
     logger.info('Restarting app...');
     if (this.driver) {
-      await this.driver.terminateApp(require('../config/appium.config').APP_PACKAGE);
+      await this.driver.terminateApp(APP_PACKAGE);
       await this.driver.pause(1000);
-      await this.driver.activateApp(require('../config/appium.config').APP_PACKAGE);
+      await this.driver.activateApp(APP_PACKAGE);
       await this.driver.pause(2000);
     }
   }
@@ -93,7 +93,7 @@ class DriverFactory {
   async resetApp() {
     logger.info('Resetting app state...');
     if (this.driver) {
-      await DeviceUtils.clearAppData(require('../config/appium.config').APP_PACKAGE);
+      await DeviceUtils.clearAppData(APP_PACKAGE);
       await this.driver.pause(1000);
     }
   }
