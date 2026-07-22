@@ -11,9 +11,11 @@
     "test:library": "mocha tests/library/**/*.test.js",
     "test:navigation": "mocha tests/navigation/**/*.test.js",
     "test:all": "mocha \"tests/**/**/*.test.js\"",
-    "report:excel": "node reporters/excel.reporter.js",
+    "report:excel": "node reporters/generate-report.js",
+    "setup": "npm install",
     "appium:start": "appium --use-plugins=execute-driver --allow-insecure chromedriver_autodownload",
     "device:list": "adb devices -l",
+    "ci:verify": "node -e \"['exceljs','winston','mocha','chai','fs-extra','moment','webdriverio'].forEach(m=>{try{require(m);console.log('OK',m)}catch(e){console.error('MISSING',m);process.exit(1)}})\"",
     "lint": "node --check config/appium.config.js"
   },
   "dependencies": {

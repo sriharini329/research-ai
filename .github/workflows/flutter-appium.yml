@@ -176,12 +176,7 @@ jobs:
       # ─── Step 12: Verify node_modules Before Tests ───────────────────────
       - name: 🔍 Verify Dependencies Present
         working-directory: e2e
-        run: |
-          node -e "require('exceljs'); console.log('✅ exceljs found')"
-          node -e "require('mocha');   console.log('✅ mocha found')"
-          node -e "require('winston'); console.log('✅ winston found')"
-          node -e "require('chai');    console.log('✅ chai found')"
-          node -e "require('fs-extra');console.log('✅ fs-extra found')"
+        run: npm run ci:verify
 
       # ─── Step 13: Run E2E Tests ───────────────────────────────────────────
       - name: 🧪 Run E2E Tests
@@ -202,13 +197,7 @@ jobs:
       - name: 📊 Generate Excel Report
         working-directory: e2e
         if: always()
-        run: |
-          node -e "
-            const reporter = require('./reporters/excel.reporter');
-            reporter.generateReport()
-              .then(p => { console.log('Excel report generated:', p); })
-              .catch(err => { console.error('Report generation failed:', err.message); process.exit(1); });
-          "
+        run: npm run report:excel
 
       # ─── Step 15: Upload Artifacts ────────────────────────────────────────
       - name: 📁 Upload Test Artifacts
