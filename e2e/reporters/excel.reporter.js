@@ -4,41 +4,125 @@ const ExcelJS  = require('exceljs');
 const path     = require('path');
 const fs       = require('fs-extra');
 const moment   = require('moment');
-const logger   = require('../utils/logger');
-const DeviceUtils = require('../utils/device.utils');
+const glob     = require('glob');
 
 const REPORTS_DIR = path.join(__dirname, '..', 'reports');
+const LOGS_DIR    = path.join(REPORTS_DIR, 'logs');
 fs.ensureDirSync(REPORTS_DIR);
 
-/**
- * Excel Report Generator
- * Generates Flutter_E2E_Report.xlsx with 4 sheets.
- * Call generateReport(results) after all tests finish.
- */
 class ExcelReporter {
   constructor() {
     this.workbook    = new ExcelJS.Workbook();
     this.testResults = [];
+    this.executionLogs = [];
     this.startTime   = new Date();
   }
 
-  // ─── Register a Test Result ────────────────────────────────────────────────
-  addResult({ id, module, scenario, status, device, duration, failureReason, screenshotPath }) {
-    this.testResults.push({
-      id,
-      module,
-      scenario,
-      status,
-      device,
-      duration,
-      failureReason: failureReason || '',
-      screenshotPath: screenshotPath || '',
-      timestamp: new Date().toISOString(),
-    });
+  // ─── Auto-Load Data from Mochawesome and Winston ───────────────────────────
+  _loadResultsFromMochawesome() {
+    console.log('🔍 Scanning for Mochawesome JSON reports...');
+    const files = glob.sync(`${REPORTS_DIR}/*.json`).filter(f => !f.includes('package.json'));
+    if (files.length === 0) {
+      console.log('⚠️ No Mochawesome JSON reports found.');
+      return;
+    }
+    
+    // Get the most recently modified JSON report
+    files.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+    const latestReport = files[0];
+    console.log(`✅ Parsing report: ${path.basename(latestReport)}`);
+
+    try {
+      const data = fs.readJsonSync(latestReport);
+      const suites = data.results || [];
+      
+      const processSuite = (suite) => {
+        if (suite.tests && suite.tests.length > 0) {
+          suite.tests.forEach((test, i) => {
+            const status = test.state === 'passed' ? 'PASS' : test.state === 'failed' ? 'FAIL' : 'SKIPPED';
+            const durationSec = test.duration ? (test.duration / 1000).toFixed(2) : 0;
+            
+            // Extract module from file path if possible, fallback to suite title
+            let module = suite.title;
+            if (test.file) {
+              if (test.file.includes('auth')) module = 'Authentication';
+              else if (test.file.includes('dashboard')) module = 'Dashboard';
+              else if (test.file.includes('upload')) module = 'Upload';
+              else if (test.file.includes('navigation')) module = 'Navigation';
+            }
+
+            this.testResults.push({
+              id: test.title.match(/TC\d+/) ? test.title.match(/TC\d+/)[0] : `TC-${String(this.testResults.length + 1).padStart(3, '0')}`,
+              module: module,
+              scenario: test.title,
+              status: status,
+              device: process.env.DEVICE_NAME || 'Android Emulator',
+              duration: durationSec,
+              failureReason: test.err ? test.err.message : '',
+              stackTrace: test.err ? test.err.estack : '',
+              screenshotPath: status === 'FAIL' ? `failures/${test.title.replace(/[^a-zA-Z0-9]/g, '_')}.png` : '',
+              timestamp: new Date().toISOString()
+            });
+          });
+        }
+        if (suite.suites && suite.suites.length > 0) {
+          suite.suites.forEach(processSuite);
+        }
+      };
+
+      suites.forEach(processSuite);
+    } catch (err) {
+      console.error(`❌ Failed to parse Mochawesome JSON: ${err.message}`);
+    }
+  }
+
+  _loadLogsFromWinston() {
+    console.log('🔍 Scanning for Winston JSON logs...');
+    const files = glob.sync(`${LOGS_DIR}/*.json`);
+    if (files.length === 0) return;
+
+    files.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+    const latestLog = files[0];
+
+    try {
+      const content = fs.readFileSync(latestLog, 'utf8');
+      const lines = content.split('\n').filter(l => l.trim() !== '');
+      lines.forEach(line => {
+        try {
+          const logEntry = JSON.parse(line);
+          // Look for structured step logs
+          if (logEntry.message && logEntry.message.includes('→')) {
+            const match = logEntry.message.match(/\[(.*?)\] (.*?) → (.*?)(?: \| (.*))?$/);
+            if (match) {
+              this.executionLogs.push({
+                timestamp: logEntry.timestamp || new Date().toISOString(),
+                testId: match[1],
+                step: match[2],
+                result: match[3],
+                message: match[4] || logEntry.message
+              });
+            } else {
+              // Generic log
+              this.executionLogs.push({
+                timestamp: logEntry.timestamp || new Date().toISOString(),
+                testId: 'SYSTEM',
+                step: 'Log Output',
+                result: logEntry.level.toUpperCase(),
+                message: logEntry.message
+              });
+            }
+          }
+        } catch (e) {
+          // ignore parsing error for single line
+        }
+      });
+    } catch (err) {
+      console.error(`❌ Failed to parse Winston logs: ${err.message}`);
+    }
   }
 
   // ─── Style Helpers ─────────────────────────────────────────────────────────
-  _headerStyle(color = 'FF4B5563') {
+  _headerStyle(color = 'FF1F4E78') {
     return {
       type: 'pattern',
       pattern: 'solid',
@@ -46,225 +130,202 @@ class ExcelReporter {
     };
   }
 
-  _applyHeaderRow(worksheet, headers, widths) {
+  _applyHeaderRow(worksheet, headers, widths, color = 'FF1F4E78') {
     worksheet.columns = headers.map((h, i) => ({
       header: h,
-      key: h.toLowerCase().replace(/\s+/g, '_'),
+      key: h.toLowerCase().replace(/[^a-z0-9]/g, '_'),
       width: widths[i] || 20,
     }));
 
     const headerRow = worksheet.getRow(1);
     headerRow.eachCell(cell => {
-      cell.fill = this._headerStyle('FF1E3A5F');
+      cell.fill = this._headerStyle(color);
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
       cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
       cell.border = {
-        bottom: { style: 'medium', color: { argb: 'FF4B9CD3' } },
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'medium' },
+        right: { style: 'thin' }
       };
     });
-    headerRow.height = 28;
+    headerRow.height = 25;
   }
 
-  _statusColor(status) {
-    switch ((status || '').toUpperCase()) {
-      case 'PASS':   return 'FFD4EDDA';
-      case 'FAIL':   return 'FFF8D7DA';
-      case 'SKIP':   return 'FFFFF3CD';
-      default:       return 'FFFFFFFF';
+  _applyBordersAndColors(row, rowIndex, statusColIdx = -1) {
+    row.eachCell((cell, colNumber) => {
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFD9D9D9' } },
+        left: { style: 'thin', color: { argb: 'FFD9D9D9' } },
+        bottom: { style: 'thin', color: { argb: 'FFD9D9D9' } },
+        right: { style: 'thin', color: { argb: 'FFD9D9D9' } }
+      };
+      cell.alignment = { vertical: 'middle', wrapText: true };
+      
+      if (rowIndex % 2 === 0) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+      }
+    });
+
+    if (statusColIdx > 0) {
+      const statusCell = row.getCell(statusColIdx);
+      const val = (statusCell.value || '').toUpperCase();
+      if (val === 'PASS' || val.includes('PASS')) {
+        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC6EFCE' } };
+        statusCell.font = { color: { argb: 'FF006100' }, bold: true };
+      } else if (val === 'FAIL' || val.includes('FAIL') || val === 'ERROR') {
+        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC7CE' } };
+        statusCell.font = { color: { argb: 'FF9C0006' }, bold: true };
+      } else if (val === 'SKIPPED' || val === 'SKIP' || val === 'WARN') {
+        statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEB9C' } };
+        statusCell.font = { color: { argb: 'FF9C6500' }, bold: true };
+      }
+      statusCell.alignment = { vertical: 'middle', horizontal: 'center' };
     }
   }
 
-  // ─── Sheet 1: Summary ─────────────────────────────────────────────────────
-  async _addSummarySheet(deviceName, androidVersion) {
-    const ws = this.workbook.addWorksheet('📊 Summary', {
-      pageSetup: { fitToPage: true },
-      properties: { tabColor: { argb: 'FF1E3A5F' } },
-    });
+  // ─── Sheet: Summary ────────────────────────────────────────────────────────
+  async _addSummarySheet() {
+    const ws = this.workbook.addWorksheet('Summary', { properties: { tabColor: { argb: 'FF4F81BD' } } });
 
     const total   = this.testResults.length;
     const passed  = this.testResults.filter(r => r.status === 'PASS').length;
     const failed  = this.testResults.filter(r => r.status === 'FAIL').length;
-    const skipped = total - passed - failed;
+    const skipped = total - passed - failed; // Derived to ensure Total = P + F + S
     const passPct = total > 0 ? ((passed / total) * 100).toFixed(1) : '0.0';
-    const duration = moment().diff(moment(this.startTime), 'seconds');
+    
+    // Calculate total duration from tests
+    const durationSec = this.testResults.reduce((acc, curr) => acc + parseFloat(curr.duration || 0), 0).toFixed(2);
 
+    ws.columns = [{ width: 25 }, { width: 35 }];
+    
     const data = [
       ['Metric', 'Value'],
-      ['📅 Execution Date', moment().format('YYYY-MM-DD HH:mm:ss')],
-      ['📱 Device Name', deviceName],
-      ['🤖 Android Version', androidVersion],
-      ['🧪 Total Tests', total],
-      ['✅ Passed', passed],
-      ['❌ Failed', failed],
-      ['⏭️  Skipped', skipped],
-      ['📈 Pass Percentage', `${passPct}%`],
-      ['⏱️  Duration (seconds)', duration],
+      ['Execution Date', moment().format('YYYY-MM-DD HH:mm:ss')],
+      ['Device Name', process.env.DEVICE_NAME || 'Android Emulator'],
+      ['Android Version', process.env.PLATFORM_VERSION || 'Unknown'],
+      ['Total Tests', total],
+      ['Passed', passed],
+      ['Failed', failed],
+      ['Skipped', skipped],
+      ['Pass Percentage', `${passPct}%`],
+      ['Duration (seconds)', durationSec],
     ];
 
-    ws.columns = [{ width: 28 }, { width: 36 }];
     data.forEach((row, idx) => {
       const wsRow = ws.addRow(row);
       if (idx === 0) {
         wsRow.eachCell(c => {
-          c.fill = this._headerStyle('FF1E3A5F');
-          c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 12 };
+          c.fill = this._headerStyle();
+          c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
           c.alignment = { horizontal: 'center', vertical: 'middle' };
         });
-        wsRow.height = 28;
       } else {
-        wsRow.getCell(1).font = { bold: true, color: { argb: 'FF374151' } };
+        wsRow.getCell(1).font = { bold: true };
         wsRow.getCell(2).alignment = { horizontal: 'left' };
-        // Color pass/fail rows
-        if (row[0].includes('Passed'))  wsRow.getCell(2).font = { color: { argb: 'FF166534' }, bold: true };
-        if (row[0].includes('Failed'))  wsRow.getCell(2).font = { color: { argb: 'FF991B1B' }, bold: true };
-        if (row[0].includes('Pass Percentage')) {
-          wsRow.getCell(2).font = { bold: true, color: { argb: parseFloat(passPct) >= 80 ? 'FF166534' : 'FF991B1B' } };
-        }
+        this._applyBordersAndColors(wsRow, idx + 1);
+        
+        // Color specific summary rows
+        if (row[0] === 'Passed') wsRow.getCell(2).font = { color: { argb: 'FF006100' }, bold: true };
+        if (row[0] === 'Failed') wsRow.getCell(2).font = { color: { argb: 'FF9C0006' }, bold: true };
+        if (row[0] === 'Pass Percentage') wsRow.getCell(2).font = { bold: true, color: { argb: parseFloat(passPct) >= 80 ? 'FF006100' : 'FF9C0006' } };
       }
-      wsRow.eachCell(c => {
-        c.border = { bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } } };
-      });
     });
-
-    logger.info('Excel: Summary sheet added');
   }
 
-  // ─── Sheet 2: Test Cases ──────────────────────────────────────────────────
+  // ─── Sheet: Test Cases ─────────────────────────────────────────────────────
   async _addTestCasesSheet() {
-    const ws = this.workbook.addWorksheet('🧪 Test Cases', {
-      properties: { tabColor: { argb: 'FF059669' } },
-    });
-
+    const ws = this.workbook.addWorksheet('Test Cases', { properties: { tabColor: { argb: 'FF92D050' } } });
     this._applyHeaderRow(ws,
-      ['Test ID', 'Module', 'Scenario', 'Status', 'Device', 'Duration (s)'],
-      [12, 20, 50, 12, 24, 14]
+      ['Test ID', 'Module', 'Scenario', 'Status', 'Device', 'Duration (seconds)'],
+      [15, 20, 50, 15, 25, 20]
     );
 
     this.testResults.forEach((r, i) => {
-      const row = ws.addRow([
-        r.id || `TC${String(i + 1).padStart(3, '0')}`,
-        r.module,
-        r.scenario,
-        r.status,
-        r.device,
-        r.duration || 0,
-      ]);
-      const statusCell = row.getCell(4);
-      statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: this._statusColor(r.status).replace('FF', 'FF') } };
-      statusCell.font = { bold: true };
-      statusCell.alignment = { horizontal: 'center' };
-      row.eachCell(c => {
-        c.border = { bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } } };
-        c.alignment = { vertical: 'middle', ...c.alignment };
-      });
-      // Alternate row background
-      if (i % 2 === 0) {
-        row.eachCell(c => {
-          if (!c.fill?.fgColor?.argb?.startsWith('FFD4') && !c.fill?.fgColor?.argb?.startsWith('FFF8')) {
-            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } };
-          }
-        });
-      }
+      const row = ws.addRow([r.id, r.module, r.scenario, r.status, r.device, r.duration]);
+      this._applyBordersAndColors(row, i, 4);
     });
-
     ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 6 } };
-    logger.info('Excel: Test Cases sheet added');
   }
 
-  // ─── Sheet 3: Failed Tests ────────────────────────────────────────────────
-  async _addFailedTestsSheet(androidVersion, deviceName) {
-    const ws = this.workbook.addWorksheet('❌ Failed Tests', {
-      properties: { tabColor: { argb: 'FFDC2626' } },
-    });
-
+  // ─── Sheet: Passed Tests ───────────────────────────────────────────────────
+  async _addPassedTestsSheet() {
+    const ws = this.workbook.addWorksheet('Passed Tests', { properties: { tabColor: { argb: 'FF00B050' } } });
     this._applyHeaderRow(ws,
-      ['Test Name', 'Failure Reason', 'Screenshot Path', 'Device', 'Android Version'],
-      [36, 60, 60, 24, 18]
+      ['Test ID', 'Module', 'Scenario', 'Execution Time', 'Duration', 'Device'],
+      [15, 20, 50, 25, 15, 25],
+      'FF339933'
+    );
+
+    const passed = this.testResults.filter(r => r.status === 'PASS');
+    passed.forEach((r, i) => {
+      const row = ws.addRow([r.id, r.module, r.scenario, r.timestamp, r.duration, r.device]);
+      this._applyBordersAndColors(row, i);
+    });
+  }
+
+  // ─── Sheet: Failed Tests ───────────────────────────────────────────────────
+  async _addFailedTestsSheet() {
+    const ws = this.workbook.addWorksheet('Failed Tests', { properties: { tabColor: { argb: 'FFC00000' } } });
+    this._applyHeaderRow(ws,
+      ['Test ID', 'Module', 'Scenario', 'Failure Reason', 'Screenshot Path', 'Stack Trace', 'Duration'],
+      [15, 20, 40, 50, 40, 60, 15],
+      'FF990000'
     );
 
     const failed = this.testResults.filter(r => r.status === 'FAIL');
-    if (failed.length === 0) {
-      const row = ws.addRow(['🎉 No failures!', '', '', '', '']);
-      row.getCell(1).font = { color: { argb: 'FF166534' }, bold: true };
-    } else {
-      failed.forEach(r => {
-        const row = ws.addRow([
-          r.scenario,
-          r.failureReason,
-          r.screenshotPath,
-          deviceName,
-          androidVersion,
-        ]);
-        row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF1F2' } };
-        row.eachCell(c => {
-          c.border = { bottom: { style: 'thin', color: { argb: 'FFFECACA' } } };
-          c.alignment = { vertical: 'top', wrapText: true };
-        });
-        row.height = 36;
-      });
-    }
-
-    logger.info('Excel: Failed Tests sheet added');
+    failed.forEach((r, i) => {
+      const row = ws.addRow([r.id, r.module, r.scenario, r.failureReason, r.screenshotPath, r.stackTrace, r.duration]);
+      this._applyBordersAndColors(row, i);
+      row.getCell(4).font = { color: { argb: 'FF9C0006' } };
+    });
   }
 
-  // ─── Sheet 4: Execution Logs ──────────────────────────────────────────────
+  // ─── Sheet: Execution Logs ─────────────────────────────────────────────────
   async _addExecutionLogsSheet() {
-    const ws = this.workbook.addWorksheet('📋 Execution Logs', {
-      properties: { tabColor: { argb: 'FF7C3AED' } },
-    });
-
+    const ws = this.workbook.addWorksheet('Execution Logs', { properties: { tabColor: { argb: 'FF7030A0' } } });
     this._applyHeaderRow(ws,
-      ['Timestamp', 'Test Name', 'Step', 'Result', 'Remarks'],
-      [24, 36, 50, 12, 40]
+      ['Timestamp', 'Test ID', 'Step Description', 'Result', 'Log Message'],
+      [25, 15, 40, 15, 60],
+      'FF5C246E'
     );
 
-    const logs = logger.getExecutionLogs();
-    if (logs.length === 0) {
-      ws.addRow(['No logs recorded', '', '', '', '']);
-    } else {
-      logs.forEach(log => {
-        const row = ws.addRow([
-          moment(log.timestamp).format('HH:mm:ss.SSS'),
-          log.testName,
-          log.step,
-          log.result,
-          log.remarks,
-        ]);
-        const resultCell = row.getCell(4);
-        resultCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: this._statusColor(log.result) } };
-        resultCell.font = { bold: true };
-        resultCell.alignment = { horizontal: 'center' };
-        row.eachCell(c => {
-          c.border = { bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } } };
-        });
-      });
-    }
-
-    logger.info('Excel: Execution Logs sheet added');
+    this.executionLogs.forEach((log, i) => {
+      const row = ws.addRow([
+        moment(log.timestamp).format('YYYY-MM-DD HH:mm:ss.SSS'),
+        log.testId,
+        log.step,
+        log.result,
+        log.message
+      ]);
+      this._applyBordersAndColors(row, i, 4);
+    });
   }
 
   // ─── Generate Full Report ─────────────────────────────────────────────────
   async generateReport() {
-    const deviceName     = await DeviceUtils.getDeviceName().catch(() => 'Unknown Device');
-    const androidVersion = await DeviceUtils.getAndroidVersion().catch(() => 'Unknown');
-    const outputPath     = path.join(REPORTS_DIR, 'Flutter_E2E_Report.xlsx');
+    // If run as standalone script, load data from disk
+    if (this.testResults.length === 0) {
+      this._loadResultsFromMochawesome();
+    }
+    if (this.executionLogs.length === 0) {
+      this._loadLogsFromWinston();
+    }
 
-    this.workbook.creator  = 'Research AI QA Team';
-    this.workbook.lastModifiedBy = 'Appium Automation';
+    const outputPath = path.join(REPORTS_DIR, 'Flutter_E2E_Report.xlsx');
+    this.workbook.creator  = 'Automation Framework';
     this.workbook.created  = new Date();
-    this.workbook.modified = new Date();
 
-    await this._addSummarySheet(deviceName, androidVersion);
+    await this._addSummarySheet();
     await this._addTestCasesSheet();
-    await this._addFailedTestsSheet(androidVersion, deviceName);
+    await this._addPassedTestsSheet();
+    await this._addFailedTestsSheet();
     await this._addExecutionLogsSheet();
 
     await this.workbook.xlsx.writeFile(outputPath);
-    logger.info(`✅ Excel report saved: ${outputPath}`);
+    console.log(`✅ Excel report strictly generated according to requirements at: ${outputPath}`);
     return outputPath;
   }
 }
 
-// Singleton
-const excelReporter = new ExcelReporter();
-module.exports = excelReporter;
+module.exports = new ExcelReporter();
