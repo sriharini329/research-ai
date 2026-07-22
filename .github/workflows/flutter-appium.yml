@@ -38,15 +38,23 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
 
-      # ─── Step 3: Setup Node.js ────────────────────────────────────────────
+      # ─── Step 3: Setup Node.js (no cache — lock file committed separately) ─
       - name: 🟢 Setup Node.js ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: e2e/package-lock.json
 
-      # ─── Step 4: Setup Android SDK ────────────────────────────────────────
+      # ─── Step 4: Install E2E Dependencies (MUST be before any tests/reports)
+      - name: 📦 Install E2E Node Dependencies
+        working-directory: e2e
+        run: |
+          echo "Installing E2E framework dependencies..."
+          npm install --prefer-offline 2>&1 || npm install 2>&1
+          echo "✅ E2E dependencies installed"
+          echo "Installed packages:"
+          ls node_modules | head -20
+
+      # ─── Step 5: Setup Android SDK ────────────────────────────────────────
       - name: 🤖 Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -62,7 +70,7 @@ jobs:
             "emulator"
           echo "Android SDK setup complete"
 
-      # ─── Step 5: Create AVD ───────────────────────────────────────────────
+      # ─── Step 6: Create AVD ───────────────────────────────────────────────
       - name: 📱 Create Android Virtual Device
         run: |
           echo "no" | avdmanager create avd \
@@ -73,7 +81,7 @@ jobs:
             --device "pixel_6"
           echo "AVD created: ${{ env.AVD_NAME }}"
 
-      # ─── Step 6: Start Emulator ───────────────────────────────────────────
+      # ─── Step 7: Start Emulator ───────────────────────────────────────────
       - name: 🚀 Start Android Emulator
         run: |
           $ANDROID_HOME/emulator/emulator \
@@ -91,7 +99,6 @@ jobs:
         run: |
           echo "Waiting for emulator boot..."
           adb wait-for-device
-          # Poll boot_completed property
           TIMEOUT=300
           ELAPSED=0
           while [ $ELAPSED -lt $TIMEOUT ]; do
@@ -104,14 +111,14 @@ jobs:
             sleep 5
             ELAPSED=$((ELAPSED + 5))
           done
-          # Unlock screen
+          # Unlock screen and disable animations
           adb shell input keyevent 82
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
           adb devices -l
 
-      # ─── Step 7: Install Appium 2.x ──────────────────────────────────────
+      # ─── Step 8: Install Appium 2.x ──────────────────────────────────────
       - name: 🔧 Install Appium 2.x and Drivers
         run: |
           npm install -g appium@latest
@@ -121,36 +128,38 @@ jobs:
           appium --version
           echo "Appium installation complete"
 
-      # ─── Step 8: Install E2E Dependencies ────────────────────────────────
-      - name: 📦 Install E2E Node Dependencies
-        working-directory: e2e
-        run: |
-          npm ci
-          echo "E2E dependencies installed"
-
-      # ─── Step 9: Setup Environment & Install APK ─────────────────────────
+      # ─── Step 9: Configure Test Environment ──────────────────────────────
       - name: ⚙️ Configure Test Environment
         working-directory: e2e
         run: |
           cp .env.example .env
-          sed -i 's/DEVICE_NAME=.*/DEVICE_NAME=emulator-5554/' .env
-          sed -i 's/PLATFORM_VERSION=.*/PLATFORM_VERSION=13.0/' .env
-          cat .env
+          # Override values for CI
+          sed -i 's|DEVICE_NAME=.*|DEVICE_NAME=emulator-5554|' .env
+          sed -i 's|PLATFORM_VERSION=.*|PLATFORM_VERSION=13.0|' .env
+          # Inject secrets if provided
+          if [ -n "$TEST_EMAIL_SECRET" ]; then
+            sed -i "s|TEST_EMAIL=.*|TEST_EMAIL=${TEST_EMAIL_SECRET}|" .env
+          fi
+          if [ -n "$TEST_PASSWORD_SECRET" ]; then
+            sed -i "s|TEST_PASSWORD=.*|TEST_PASSWORD=${TEST_PASSWORD_SECRET}|" .env
+          fi
+          echo "--- .env contents (secrets masked) ---"
+          sed 's/\(PASSWORD\|TOKEN\|SECRET\)=.*/\1=***/' .env
         env:
-          TEST_EMAIL:    ${{ secrets.TEST_EMAIL }}
-          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          TEST_EMAIL_SECRET:    ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD_SECRET: ${{ secrets.TEST_PASSWORD }}
 
+      # ─── Step 10: Install APK ─────────────────────────────────────────────
       - name: 📲 Install APK on Emulator
         run: |
           if [ -f "e2e/app/app-release.apk" ]; then
             adb install -r e2e/app/app-release.apk
             echo "✅ APK installed"
           else
-            echo "⚠️ APK not found at e2e/app/app-release.apk"
-            echo "Skipping APK install — tests may use pre-installed app"
+            echo "⚠️ APK not found at e2e/app/app-release.apk — skipping install"
           fi
 
-      # ─── Step 10: Start Appium Server ────────────────────────────────────
+      # ─── Step 11: Start Appium Server ─────────────────────────────────────
       - name: 🖥️ Start Appium Server
         run: |
           appium \
@@ -159,40 +168,49 @@ jobs:
             --use-plugins execute-driver \
             --allow-cors \
             &
-          sleep 8
-          curl -s http://localhost:4723/status | python3 -m json.tool | head -20
-          echo "Appium server running"
+          sleep 10
+          # Verify Appium is running
+          curl -s http://localhost:4723/status | python3 -m json.tool || echo "Appium status check failed"
+          echo "Appium server is running"
 
-      # ─── Step 11: Run E2E Tests ───────────────────────────────────────────
+      # ─── Step 12: Verify node_modules Before Tests ───────────────────────
+      - name: 🔍 Verify Dependencies Present
+        working-directory: e2e
+        run: |
+          node -e "require('exceljs'); console.log('✅ exceljs found')"
+          node -e "require('mocha');   console.log('✅ mocha found')"
+          node -e "require('winston'); console.log('✅ winston found')"
+          node -e "require('chai');    console.log('✅ chai found')"
+          node -e "require('fs-extra');console.log('✅ fs-extra found')"
+
+      # ─── Step 13: Run E2E Tests ───────────────────────────────────────────
       - name: 🧪 Run E2E Tests
         working-directory: e2e
         continue-on-error: true
         run: |
           npm run test:all 2>&1 | tee ../test-output.log
         env:
-          TEST_EMAIL:    ${{ secrets.TEST_EMAIL }}
-          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
-          APK_PATH:      ./app/app-release.apk
-          APP_PACKAGE:   com.company.app
-          APP_ACTIVITY:  com.company.app.MainActivity
-          DEVICE_NAME:   emulator-5554
+          TEST_EMAIL:       ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD:    ${{ secrets.TEST_PASSWORD }}
+          APK_PATH:         ./app/app-release.apk
+          APP_PACKAGE:      com.company.app
+          APP_ACTIVITY:     com.company.app.MainActivity
+          DEVICE_NAME:      emulator-5554
           PLATFORM_VERSION: "13.0"
 
-      # ─── Step 12: Generate Excel Report ───────────────────────────────────
+      # ─── Step 14: Generate Excel Report ──────────────────────────────────
       - name: 📊 Generate Excel Report
         working-directory: e2e
         if: always()
         run: |
           node -e "
             const reporter = require('./reporters/excel.reporter');
-            reporter.generateReport().then(p => {
-              console.log('Excel report generated:', p);
-            }).catch(err => {
-              console.error('Report generation failed:', err.message);
-            });
+            reporter.generateReport()
+              .then(p => { console.log('Excel report generated:', p); })
+              .catch(err => { console.error('Report generation failed:', err.message); process.exit(1); });
           "
 
-      # ─── Step 13: Collect Artifacts ───────────────────────────────────────
+      # ─── Step 15: Upload Artifacts ────────────────────────────────────────
       - name: 📁 Upload Test Artifacts
         uses: actions/upload-artifact@v4
         if: always()
@@ -203,7 +221,7 @@ jobs:
             test-output.log
           retention-days: 30
 
-      - name: 📸 Upload Screenshots on Failure
+      - name: 📸 Upload Failure Screenshots
         uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -211,7 +229,7 @@ jobs:
           path: e2e/reports/failures/
           retention-days: 30
 
-      # ─── Step 14: Test Summary ────────────────────────────────────────────
+      # ─── Step 16: Print Summary ───────────────────────────────────────────
       - name: 📋 Print Test Summary
         if: always()
         run: |
@@ -220,11 +238,11 @@ jobs:
           echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
           echo "| Run # | ${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Branch | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Device | Pixel 6 Emulator (API 33) |" >> $GITHUB_STEP_SUMMARY
           echo "| Report | flutter-e2e-results-${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
           if [ -f "e2e/reports/Flutter_E2E_Report.xlsx" ]; then
             echo "| Excel Report | ✅ Generated |" >> $GITHUB_STEP_SUMMARY
           else
-            echo "| Excel Report | ⚠️ Not found |" >> $GITHUB_STEP_SUMMARY
+            echo "| Excel Report | ⚠️ Not generated |" >> $GITHUB_STEP_SUMMARY
           fi
