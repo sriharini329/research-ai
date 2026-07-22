@@ -197,7 +197,9 @@ jobs:
       - name: 📊 Generate Excel Report
         working-directory: e2e
         if: always()
-        run: npm run report:excel
+        run: |
+          echo "Running standalone report generator script..."
+          npm run report:excel
 
       # ─── Step 15: Upload Artifacts ────────────────────────────────────────
       - name: 📁 Upload Test Artifacts
