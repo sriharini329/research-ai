@@ -106,17 +106,8 @@ jobs:
           script: |
             echo "Emulator booted!"
             adb devices -l
-            
-            if [ -f "e2e/app/app-release.apk" ]; then
-              adb install -r e2e/app/app-release.apk
-              echo "✅ APK installed"
-            else
-              echo "⚠️ APK not found at e2e/app/app-release.apk — tests will try to run anyway"
-            fi
-            
-            cd e2e
-            npm run ci:verify
-            npm run test:all 2>&1 | tee ../test-output.log
+            if [ -f "e2e/app/app-release.apk" ]; then adb install -r e2e/app/app-release.apk; echo "✅ APK installed"; else echo "⚠️ APK not found at e2e/app/app-release.apk — tests will try to run anyway"; fi
+            cd e2e && npm run ci:verify && npm run test:all 2>&1 | tee ../test-output.log
         env:
           TEST_EMAIL:       ${{ secrets.TEST_EMAIL }}
           TEST_PASSWORD:    ${{ secrets.TEST_PASSWORD }}
