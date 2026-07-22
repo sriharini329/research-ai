@@ -23,7 +23,7 @@ env:
 jobs:
   flutter-e2e-tests:
     name: 🤖 Run Flutter E2E Tests
-    runs-on: macos-13
+    runs-on: ubuntu-latest
     timeout-minutes: 90
 
     steps:
@@ -67,13 +67,13 @@ jobs:
         working-directory: e2e
         run: |
           cp .env.example .env
-          sed -i '' 's|DEVICE_NAME=.*|DEVICE_NAME=emulator-5554|' .env
-          sed -i '' 's|PLATFORM_VERSION=.*|PLATFORM_VERSION=13.0|' .env
+          sed -i 's|DEVICE_NAME=.*|DEVICE_NAME=emulator-5554|' .env
+          sed -i 's|PLATFORM_VERSION=.*|PLATFORM_VERSION=10.0|' .env
           if [ -n "$TEST_EMAIL_SECRET" ]; then
-            sed -i '' "s|TEST_EMAIL=.*|TEST_EMAIL=${TEST_EMAIL_SECRET}|" .env
+            sed -i "s|TEST_EMAIL=.*|TEST_EMAIL=${TEST_EMAIL_SECRET}|" .env
           fi
           if [ -n "$TEST_PASSWORD_SECRET" ]; then
-            sed -i '' "s|TEST_PASSWORD=.*|TEST_PASSWORD=${TEST_PASSWORD_SECRET}|" .env
+            sed -i "s|TEST_PASSWORD=.*|TEST_PASSWORD=${TEST_PASSWORD_SECRET}|" .env
           fi
           echo "Environment configured."
         env:
@@ -97,7 +97,7 @@ jobs:
       - name: 📱 Run Tests in Android Emulator
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
-          api-level: 33
+          api-level: 29
           target: default
           arch: x86_64
           profile: pixel_6
