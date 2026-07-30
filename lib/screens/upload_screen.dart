@@ -24,7 +24,7 @@ class _UploadScreenState extends State<UploadScreen> {
         context,
         MaterialPageRoute(
           builder: (_) =>
-              ProcessingScreen(fileName: paper.fileName, text: paper.text),
+              ProcessingScreen(fileName: paper.fileName, fileBytes: paper.fileBytes),
         ),
       );
     } catch (e) {
@@ -56,8 +56,8 @@ class _UploadScreenState extends State<UploadScreen> {
               onPressed: _browse,
             ),
             const SizedBox(height: 16),
-            const Text('Supports: PDF, Word (.docx), TXT',
-                style: TextStyle(color: kMuted, fontSize: 13)),
+            Text('Supports: PDF, Word (.docx), TXT',
+                style: TextStyle(color: context.kMuted, fontSize: 13)),
           ],
         ),
       ),
@@ -75,10 +75,10 @@ class DottedCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 56),
       decoration: BoxDecoration(
-        color: kChipBg.withOpacity(0.5),
+        color: context.kChipBg.withOpacity(0.5),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-            color: kPrimary.withOpacity(0.4), width: 1.5, style: BorderStyle.solid),
+            color: context.kPrimary.withOpacity(0.4), width: 1.5, style: BorderStyle.solid),
       ),
       child: Column(
         children: [
@@ -86,23 +86,23 @@ class DottedCard extends StatelessWidget {
             height: 78,
             width: 78,
             decoration: BoxDecoration(
-                color: kPrimary.withOpacity(0.10),
+                color: context.kPrimary.withOpacity(0.10),
                 shape: BoxShape.circle),
             child: busy
-                ? const Padding(
+                ? Padding(
                     padding: EdgeInsets.all(24),
                     child: CircularProgressIndicator(
-                        strokeWidth: 3, color: kPrimary))
-                : const Icon(Icons.cloud_upload_outlined,
-                    color: kPrimary, size: 40),
+                        strokeWidth: 3, color: context.kPrimary))
+                : Icon(Icons.cloud_upload_outlined,
+                    color: context.kPrimary, size: 40),
           ),
           const SizedBox(height: 18),
           Text(busy ? 'Reading document…' : 'Drag & drop your file here',
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700, color: kInk, fontSize: 15)),
+              style: TextStyle(
+                  fontWeight: FontWeight.w700, color: context.kInk, fontSize: 15)),
           const SizedBox(height: 4),
-          const Text('or tap to choose a file',
-              style: TextStyle(color: kMuted, fontSize: 13)),
+          Text('or tap to choose a file',
+              style: TextStyle(color: context.kMuted, fontSize: 13)),
         ],
       ),
     );

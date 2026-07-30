@@ -34,12 +34,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel', style: TextStyle(color: kMuted))),
+              child: Text('Cancel', style: TextStyle(color: context.kMuted))),
           TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Logout',
+              child: Text('Logout',
                   style:
-                      TextStyle(color: kError, fontWeight: FontWeight.w700))),
+                      TextStyle(color: context.kError, fontWeight: FontWeight.w700))),
         ],
       ),
     );
@@ -60,7 +60,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('Profile'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_none_rounded, color: kInk),
+            icon: Icon(Icons.notifications_none_rounded, color: context.kInk),
             onPressed: () => _go(const NotificationsScreen()),
           ),
         ],
@@ -88,12 +88,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 14),
                   Text(name,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
-                          color: kInk)),
+                          color: context.kInk)),
                   const SizedBox(height: 4),
-                  Text(email, style: const TextStyle(color: kMuted)),
+                  Text(email, style: TextStyle(color: context.kMuted)),
                 ],
               ),
             ),

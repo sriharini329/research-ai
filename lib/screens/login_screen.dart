@@ -59,14 +59,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: Colors.white, size: 40),
               ),
               const SizedBox(height: 24),
-              const Text('Welcome Back!',
+              Text('Welcome Back!',
                   style: TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
-                      color: kInk)),
+                      color: context.kInk)),
               const SizedBox(height: 6),
-              const Text('Login to continue',
-                  style: TextStyle(color: kMuted)),
+              Text('Login to continue',
+                  style: TextStyle(color: context.kMuted)),
               const SizedBox(height: 32),
               LabeledField(
                   hint: 'Email',
@@ -84,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       _obscure
                           ? Icons.visibility_off_outlined
                           : Icons.visibility_outlined,
-                      color: kMuted, size: 20),
+                      color: context.kMuted, size: 20),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
               ),
@@ -95,9 +95,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       context,
                       MaterialPageRoute(
                           builder: (_) => const ForgotPasswordScreen())),
-                  child: const Text('Forgot Password?',
+                  child: Text('Forgot Password?',
                       style: TextStyle(
-                          color: kPrimary, fontWeight: FontWeight.w600)),
+                          color: context.kPrimary, fontWeight: FontWeight.w600)),
                 ),
               ),
               const SizedBox(height: 12),
@@ -107,14 +107,14 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Don't have an account? ",
-                      style: TextStyle(color: kMuted)),
+                  Text("Don't have an account? ",
+                      style: TextStyle(color: context.kMuted)),
                   GestureDetector(
                     onTap: () =>
                         Navigator.pushReplacementNamed(context, '/signup'),
-                    child: const Text('Sign Up',
+                    child: Text('Sign Up',
                         style: TextStyle(
-                            color: kPrimary, fontWeight: FontWeight.w700)),
+                            color: context.kPrimary, fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),

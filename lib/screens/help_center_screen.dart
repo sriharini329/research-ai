@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:research_ai/utils/app_theme.dart';
 import 'package:research_ai/widgets/app_widgets.dart';
 import 'package:research_ai/screens/contact_support_screen.dart';
+import 'package:research_ai/screens/user_guide_screen.dart';
+import 'package:research_ai/screens/video_tutorials_screen.dart';
 
 class HelpCenterScreen extends StatelessWidget {
   const HelpCenterScreen({super.key});
@@ -26,11 +28,11 @@ class HelpCenterScreen extends StatelessWidget {
           MenuTile(
               icon: Icons.menu_book_rounded,
               label: 'User Guide',
-              onTap: () => showSnack(context, 'Opening user guide')),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const UserGuideScreen()))),
           MenuTile(
               icon: Icons.play_circle_outline,
               label: 'Video Tutorials',
-              onTap: () => showSnack(context, 'Opening tutorials')),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VideoTutorialsScreen()))),
           MenuTile(
               icon: Icons.support_agent_rounded,
               label: 'Contact Support',
@@ -49,19 +51,19 @@ class HelpCenterScreen extends StatelessWidget {
                       tilePadding: EdgeInsets.zero,
                       childrenPadding:
                           const EdgeInsets.only(bottom: 8),
-                      iconColor: kPrimary,
-                      collapsedIconColor: kMuted,
+                      iconColor: context.kPrimary,
+                      collapsedIconColor: context.kMuted,
                       title: Text(f[0],
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontWeight: FontWeight.w700,
-                              color: kInk,
+                              color: context.kInk,
                               fontSize: 14.5)),
                       children: [
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Text(f[1],
-                              style: const TextStyle(
-                                  color: kMuted, height: 1.5)),
+                              style: TextStyle(
+                                  color: context.kMuted, height: 1.5)),
                         ),
                       ],
                     ),

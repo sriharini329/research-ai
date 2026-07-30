@@ -28,9 +28,12 @@ class Paper {
   String title;
   String authors;
   String year;
+  String abstractText;
+  String keywords;
   String content;     // only present after getPaperDetail
   String summary;
   String citations;   // only present after getPaperDetail
+  String references;  // newly extracted references
   bool favorite;
   ReadingStatus status;
 
@@ -40,9 +43,12 @@ class Paper {
     required this.title,
     required this.authors,
     required this.year,
+    this.abstractText = '',
+    this.keywords = '',
     this.content = '',
     this.summary = '',
     this.citations = '',
+    this.references = '',
     this.favorite = false,
     this.status = ReadingStatus.toRead,
   });
@@ -53,9 +59,12 @@ class Paper {
         title: (j['title'] ?? '').toString(),
         authors: (j['authors'] ?? '').toString(),
         year: (j['year'] ?? '').toString(),
+        abstractText: (j['abstract'] ?? '').toString(),
+        keywords: (j['keywords'] ?? '').toString(),
         content: (j['content'] ?? '').toString(),
         summary: (j['summary'] ?? '').toString(),
         citations: (j['citations'] ?? '').toString(),
+        references: (j['references'] ?? '').toString(),
         favorite: j['is_favorite'] == true,
         status: statusFromString(j['status'] as String?),
       );

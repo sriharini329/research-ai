@@ -10,6 +10,8 @@ import 'package:research_ai/screens/paper_detail_screen.dart';
 import 'package:research_ai/screens/library_screen.dart';
 import 'package:research_ai/screens/search_screen.dart';
 import 'package:research_ai/screens/notifications_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:research_ai/providers/notification_store.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -21,7 +23,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    PaperStore.instance.load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PaperStore.instance.load();
+    });
   }
 
   String get _greeting {
@@ -34,6 +38,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _open(Widget s) async {
     await Navigator.push(context, MaterialPageRoute(builder: (_) => s));
     PaperStore.instance.load();
+    if (context.mounted) {
+      Provider.of<NotificationStore>(context, listen: false).fetchNotifications();
+    }
   }
 
   @override
@@ -58,19 +65,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('$_greeting, $name!',
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.w800,
-                                    color: kInk)),
+                                    color: context.kInk)),
                             const SizedBox(height: 4),
-                            const Text('What would you like to do?',
-                                style: TextStyle(color: kMuted)),
+                            Text('What would you like to do?',
+                                style: TextStyle(color: context.kMuted)),
                           ],
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.notifications_none_rounded,
-                            color: kInk),
+                        icon: Icon(Icons.notifications_none_rounded,
+                            color: context.kInk),
                         onPressed: () =>
                             _open(const NotificationsScreen()),
                       ),
@@ -88,44 +95,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       mainAxisExtent: 122,
                     ),
                     children: [
-                      _action(Icons.upload_file_rounded, 'Upload Paper', kBlue,
+                      _action(Icons.upload_file_rounded, 'Upload Paper', context.kBlue,
                           () => _open(const UploadScreen())),
                       _action(Icons.help_outline_rounded, 'Ask Question',
-                          kOrange, () => _open(const AskQuestionScreen())),
-                      _action(Icons.search_rounded, 'Find Papers', kTeal,
+                          context.kOrange, () => _open(const AskQuestionScreen())),
+                      _action(Icons.search_rounded, 'Find Papers', context.kTeal,
                           () => _open(const SearchScreen())),
-                      _action(Icons.folder_rounded, 'My Library', kPink,
+                      _action(Icons.folder_rounded, 'My Library', context.kPink,
                           () => _open(const LibraryScreen())),
                     ],
                   ),
                   const SizedBox(height: 26),
-                  const Text('Recent Papers',
+                  Text('Recent Papers',
                       style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
-                          color: kInk)),
+                          color: context.kInk)),
                   const SizedBox(height: 12),
                   if (store.loading && recent.isEmpty)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(top: 24),
                       child: Center(
                           child:
-                              CircularProgressIndicator(color: kPrimary)),
+                              CircularProgressIndicator(color: context.kPrimary)),
                     )
                   else if (recent.isEmpty)
                     AppCard(
                       child: Column(
                         children: [
                           Icon(Icons.description_outlined,
-                              size: 40, color: kMuted.withOpacity(0.6)),
+                              size: 40, color: context.kMuted.withOpacity(0.6)),
                           const SizedBox(height: 10),
-                          const Text('No papers yet',
+                          Text('No papers yet',
                               style: TextStyle(
-                                  fontWeight: FontWeight.w700, color: kInk)),
+                                  fontWeight: FontWeight.w700, color: context.kInk)),
                           const SizedBox(height: 4),
-                          const Text('Upload your first research paper',
+                          Text('Upload your first research paper',
                               style:
-                                  TextStyle(color: kMuted, fontSize: 13)),
+                                  TextStyle(color: context.kMuted, fontSize: 13)),
                         ],
                       ),
                     )
@@ -159,8 +166,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 12),
           Text(label,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700, color: kInk, fontSize: 15)),
+              style: TextStyle(
+                  fontWeight: FontWeight.w700, color: context.kInk, fontSize: 15)),
         ],
       ),
     );
@@ -177,8 +184,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               height: 44,
               width: 44,
               decoration: BoxDecoration(
-                  color: kChipBg, borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.article_rounded, color: kPrimary),
+                  color: context.kChipBg, borderRadius: BorderRadius.circular(12)),
+              child: Icon(Icons.article_rounded, color: context.kPrimary),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -188,17 +195,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Text(p.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, color: kInk)),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700, color: context.kInk)),
                   const SizedBox(height: 2),
                   Text(p.citationLine,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: kMuted, fontSize: 12.5)),
+                      style: TextStyle(color: context.kMuted, fontSize: 12.5)),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: kMuted),
+            Icon(Icons.chevron_right_rounded, color: context.kMuted),
           ],
         ),
       ),

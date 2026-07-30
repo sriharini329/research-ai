@@ -10,10 +10,22 @@ import 'package:research_ai/screens/main_scaffold.dart';
 
 import 'package:research_ai/utils/url.dart';
 
+import 'package:provider/provider.dart';
+import 'package:research_ai/utils/theme_provider.dart';
+import 'package:research_ai/providers/notification_store.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Url.init();
-  runApp(const ResearchAIApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationStore()),
+      ],
+      child: const ResearchAIApp(),
+    ),
+  );
 }
 
 class ResearchAIApp extends StatelessWidget {
@@ -21,10 +33,14 @@ class ResearchAIApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    
     return MaterialApp(
       title: 'Research AI',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeProvider.mode,
       initialRoute: '/',
       routes: {
         '/': (_) => const SplashScreen(),

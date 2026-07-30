@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:research_ai/utils/app_theme.dart';
+import 'package:research_ai/utils/theme_provider.dart';
 import 'package:research_ai/widgets/app_widgets.dart';
 import 'package:research_ai/screens/privacy_settings_screen.dart';
 import 'package:research_ai/screens/help_center_screen.dart';
@@ -24,6 +26,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
@@ -33,8 +36,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ToggleTile(
               icon: Icons.dark_mode_outlined,
               label: 'Dark Mode',
-              value: _darkMode,
-              onChanged: (v) => setState(() => _darkMode = v)),
+              value: themeProvider.mode == ThemeMode.dark,
+              onChanged: (v) => themeProvider.toggle(v)),
           ToggleTile(
               icon: Icons.notifications_none_rounded,
               label: 'Push Notifications',
@@ -78,9 +81,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               trailingText: Url.base,
               onTap: _changeUrl),
           const SizedBox(height: 16),
-          const Center(
+          Center(
             child: Text('Research AI · Version 1.0.0',
-                style: TextStyle(color: kMuted, fontSize: 12)),
+                style: TextStyle(color: context.kMuted, fontSize: 12)),
           ),
         ],
       ),
@@ -97,9 +100,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Specify the backend Flask server URL. Note: Use http://10.0.2.2:5000 for emulator, or http://<ip>:5000 for physical device.',
-              style: TextStyle(fontSize: 12, color: kMuted),
+              style: TextStyle(fontSize: 12, color: context.kMuted),
             ),
             const SizedBox(height: 12),
             TextField(

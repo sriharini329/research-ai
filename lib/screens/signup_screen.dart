@@ -67,14 +67,14 @@ class _SignupScreenState extends State<SignupScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 16),
-              const Text('Create Account',
+              Text('Create Account',
                   style: TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
-                      color: kInk)),
+                      color: context.kInk)),
               const SizedBox(height: 6),
-              const Text('Join and start analyzing research',
-                  style: TextStyle(color: kMuted)),
+              Text('Join and start analyzing research',
+                  style: TextStyle(color: context.kMuted)),
               const SizedBox(height: 30),
               LabeledField(hint: 'Full Name', controller: _name, icon: Icons.person_outline),
               const SizedBox(height: 14),
@@ -94,7 +94,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       _obscure
                           ? Icons.visibility_off_outlined
                           : Icons.visibility_outlined,
-                      color: kMuted, size: 20),
+                      color: context.kMuted, size: 20),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
               ),
@@ -111,14 +111,14 @@ class _SignupScreenState extends State<SignupScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('Already have an account? ',
-                      style: TextStyle(color: kMuted)),
+                  Text('Already have an account? ',
+                      style: TextStyle(color: context.kMuted)),
                   GestureDetector(
                     onTap: () =>
                         Navigator.pushReplacementNamed(context, '/login'),
-                    child: const Text('Login',
+                    child: Text('Login',
                         style: TextStyle(
-                            color: kPrimary, fontWeight: FontWeight.w700)),
+                            color: context.kPrimary, fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),

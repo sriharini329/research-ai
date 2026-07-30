@@ -55,7 +55,7 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
             children: [
               if (widget.paperTitle.isNotEmpty) ...[
                 Text('On: ${widget.paperTitle}',
-                    style: const TextStyle(color: kMuted, fontSize: 13)),
+                    style: TextStyle(color: context.kMuted, fontSize: 13)),
                 const SizedBox(height: 12),
               ],
               LabeledField(
@@ -63,9 +63,9 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
                   controller: _ctrl,
                   maxLines: 6),
               const SizedBox(height: 18),
-              const Text('Highlight color',
+              Text('Highlight color',
                   style:
-                      TextStyle(fontWeight: FontWeight.w700, color: kInk)),
+                      TextStyle(fontWeight: FontWeight.w700, color: context.kInk)),
               const SizedBox(height: 12),
               Row(
                 children: _colors.map((c) {
@@ -80,7 +80,7 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
                         color: Color(c),
                         shape: BoxShape.circle,
                         border: Border.all(
-                            color: on ? kInk : Colors.transparent, width: 2),
+                            color: on ? context.kInk : Colors.transparent, width: 2),
                       ),
                     ),
                   );

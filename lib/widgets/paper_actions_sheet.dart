@@ -12,18 +12,19 @@ import 'package:research_ai/screens/export_options_screen.dart';
 void showPaperActions(BuildContext context, Paper p) {
   showModalBottomSheet(
     context: context,
-    backgroundColor: kSurface,
+    backgroundColor: context.kSurface,
     shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
     builder: (ctx) {
       Widget tile(IconData icon, String label, VoidCallback onTap,
-          {Color color = kPrimary}) {
+          {Color? color}) {
+        final c = color ?? context.kPrimary;
         return ListTile(
-          leading: Icon(icon, color: color),
+          leading: Icon(icon, color: c),
           title: Text(label,
               style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: color == kError ? kError : kInk)),
+                  color: c == context.kError ? context.kError : context.kInk)),
           onTap: () {
             Navigator.pop(ctx);
             onTap();
@@ -42,7 +43,7 @@ void showPaperActions(BuildContext context, Paper p) {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 6),
                 decoration: BoxDecoration(
-                    color: kBorder, borderRadius: BorderRadius.circular(2)),
+                    color: context.kBorder, borderRadius: BorderRadius.circular(2)),
               ),
               tile(Icons.visibility_outlined, 'View Details',
                   () => Navigator.push(context,
@@ -54,7 +55,7 @@ void showPaperActions(BuildContext context, Paper p) {
                   p.favorite ? Icons.favorite : Icons.favorite_border,
                   p.favorite ? 'Remove from Favorites' : 'Add to Favorites',
                   () => PaperStore.instance.toggleFavorite(p),
-                  color: kPink),
+                  color: context.kPink),
               tile(Icons.format_quote_rounded, 'Cite Paper',
                   () => Navigator.push(context,
                       MaterialPageRoute(builder: (_) => CitePaperScreen(paper: p)))),
@@ -64,7 +65,7 @@ void showPaperActions(BuildContext context, Paper p) {
               tile(Icons.delete_outline, 'Delete', () {
                 PaperStore.instance.remove(p);
                 showSnack(context, 'Paper deleted');
-              }, color: kError),
+              }, color: context.kError),
             ],
           ),
         ),

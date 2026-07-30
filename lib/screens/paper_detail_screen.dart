@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:research_ai/utils/app_theme.dart';
 import 'package:research_ai/models/paper.dart';
 import 'package:research_ai/services/api_service.dart';
-import 'package:research_ai/services/paper_service.dart';
 import 'package:research_ai/providers/paper_store.dart';
 import 'package:research_ai/widgets/app_widgets.dart';
 import 'package:research_ai/screens/chat_with_paper_screen.dart';
@@ -21,9 +20,6 @@ class _PaperDetailScreenState extends State<PaperDetailScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tab;
   bool _loadingDetail = true;
-  String? _citations;
-  bool _citLoading = false;
-  bool _citRequested = false;
 
   @override
   void initState() {
@@ -40,35 +36,16 @@ class _PaperDetailScreenState extends State<PaperDetailScreen>
       final full = await ApiService.getPaperDetail(widget.paper.id);
       widget.paper.content = full.content;
       widget.paper.summary = full.summary;
+      widget.paper.abstractText = full.abstractText;
+      widget.paper.keywords = full.keywords;
+      widget.paper.references = full.references;
       widget.paper.citations = full.citations;
-      if (full.citations.isNotEmpty) _citations = full.citations;
     } catch (_) {}
     if (mounted) setState(() => _loadingDetail = false);
   }
 
-  final _ai = PaperService();
-
   Future<void> _loadCitations() async {
-    if (_citRequested) return;
-    _citRequested = true;
-    if (_citations != null && _citations!.isNotEmpty) return;
-    setState(() => _citLoading = true);
-    try {
-      // make sure we have the paper text
-      if (widget.paper.content.isEmpty) {
-        final full = await ApiService.getPaperDetail(widget.paper.id);
-        widget.paper.content = full.content;
-      }
-      final result = await _ai.citations(widget.paper.content);
-      _citations = result;
-      // cache on the backend so it loads instantly next time
-      try {
-        await ApiService.saveCitations(widget.paper.id, result);
-      } catch (_) {}
-    } catch (e) {
-      _citations = e.toString();
-    }
-    if (mounted) setState(() => _citLoading = false);
+    // References are now pre-extracted by the backend.
   }
 
   @override
@@ -91,7 +68,7 @@ class _PaperDetailScreenState extends State<PaperDetailScreen>
   void _changeStatus() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: kSurface,
+      backgroundColor: context.kSurface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
       builder: (ctx) => SafeArea(
@@ -103,7 +80,7 @@ class _PaperDetailScreenState extends State<PaperDetailScreen>
                         widget.paper.status == s
                             ? Icons.radio_button_checked
                             : Icons.radio_button_unchecked,
-                        color: kPrimary),
+                        color: context.kPrimary),
                     title: Text(_statusLabel(s)),
                     onTap: () async {
                       await PaperStore.instance.setStatus(widget.paper, s);
@@ -128,12 +105,12 @@ class _PaperDetailScreenState extends State<PaperDetailScreen>
             animation: PaperStore.instance,
             builder: (_, __) => IconButton(
               icon: Icon(p.favorite ? Icons.favorite : Icons.favorite_border,
-                  color: p.favorite ? kPink : kMuted),
+                  color: p.favorite ? context.kPink : context.kMuted),
               onPressed: () => PaperStore.instance.toggleFavorite(p),
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.more_vert_rounded, color: kInk),
+            icon: Icon(Icons.more_vert_rounded, color: context.kInk),
             onPressed: () => showPaperActions(context, p),
           ),
         ],
@@ -146,17 +123,17 @@ class _PaperDetailScreenState extends State<PaperDetailScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(p.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w800,
-                        color: kInk)),
+                        color: context.kInk)),
                 const SizedBox(height: 6),
                 Row(
                   children: [
                     Expanded(
                       child: Text(p.citationLine,
-                          style: const TextStyle(
-                              color: kMuted, fontSize: 13.5)),
+                          style: TextStyle(
+                              color: context.kMuted, fontSize: 13.5)),
                     ),
                     GestureDetector(
                       onTap: _changeStatus,
@@ -166,19 +143,19 @@ class _PaperDetailScreenState extends State<PaperDetailScreen>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                              color: kChipBg,
+                              color: context.kChipBg,
                               borderRadius: BorderRadius.circular(20)),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(_statusLabel(p.status),
-                                  style: const TextStyle(
-                                      color: kPrimaryDark,
+                                  style: TextStyle(
+                                      color: context.kPrimaryDark,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 12)),
                               const SizedBox(width: 4),
-                              const Icon(Icons.expand_more_rounded,
-                                  size: 16, color: kPrimaryDark),
+                              Icon(Icons.expand_more_rounded,
+                                  size: 16, color: context.kPrimaryDark),
                             ],
                           ),
                         ),
@@ -191,9 +168,9 @@ class _PaperDetailScreenState extends State<PaperDetailScreen>
           ),
           TabBar(
             controller: _tab,
-            labelColor: kPrimary,
-            unselectedLabelColor: kMuted,
-            indicatorColor: kPrimary,
+            labelColor: context.kPrimary,
+            unselectedLabelColor: context.kMuted,
+            indicatorColor: context.kPrimary,
             indicatorWeight: 3,
             labelStyle: const TextStyle(fontWeight: FontWeight.w700),
             tabs: const [
@@ -206,15 +183,25 @@ class _PaperDetailScreenState extends State<PaperDetailScreen>
             child: TabBarView(
               controller: _tab,
               children: [
-                ListView(padding: kPad, children: [
-                  _card('Summary',
-                      p.summary.isEmpty ? 'Loading…' : p.summary,
-                      Icons.summarize_outlined),
-                ]),
+                _loadingDetail
+                    ? _loader('Loading Details...')
+                    : ListView(padding: kPad, children: [
+                        if (p.abstractText.isNotEmpty) ...[
+                          _card('Abstract', p.abstractText, Icons.article_outlined),
+                          const SizedBox(height: 16),
+                        ],
+                        if (p.keywords.isNotEmpty) ...[
+                          _card('Keywords', p.keywords, Icons.vpn_key_outlined),
+                          const SizedBox(height: 16),
+                        ],
+                        _card('Summary',
+                            p.summary.isEmpty ? 'Summary not available.' : p.summary,
+                            Icons.summarize_outlined),
+                      ]),
                 _loadingDetail
                     ? _loader('Loading full text…')
                     : ListView(padding: kPad, children: [
-                        _card('Full Text',
+                        _card('Extracted Full Text (PyMuPDF)',
                             p.content.isEmpty ? 'No text available.' : p.content,
                             Icons.description_outlined),
                       ]),
@@ -230,21 +217,22 @@ class _PaperDetailScreenState extends State<PaperDetailScreen>
 
   Widget _loader(String label) => Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const CircularProgressIndicator(color: kPrimary),
+          CircularProgressIndicator(color: context.kPrimary),
           const SizedBox(height: 16),
-          Text(label, style: const TextStyle(color: kMuted)),
+          Text(label, style: TextStyle(color: context.kMuted)),
         ]),
       );
 
   Widget _citationsTab() {
-    if (_citLoading) return _loader('Building IEEE citations…');
-    if (_citations == null) {
-      return const Center(
-          child: Text('Open this tab to load citations',
-              style: TextStyle(color: kMuted)));
+    if (_loadingDetail) return _loader('Loading References...');
+    final refs = widget.paper.references;
+    if (refs.isEmpty) {
+      return Center(
+          child: Text('No references found in this paper.',
+              style: TextStyle(color: context.kMuted)));
     }
     return ListView(padding: kPad, children: [
-      _card('References (IEEE)', _citations!, Icons.format_quote_rounded),
+      _card('Extracted References', refs, Icons.format_quote_rounded),
     ]);
   }
 
@@ -256,14 +244,14 @@ class _PaperDetailScreenState extends State<PaperDetailScreen>
         children: [
           Row(
             children: [
-              Icon(icon, color: kPrimary, size: 20),
+              Icon(icon, color: context.kPrimary, size: 20),
               const SizedBox(width: 8),
               Text(title,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800, color: kInk, fontSize: 16)),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800, color: context.kInk, fontSize: 16)),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.copy_rounded, size: 18, color: kMuted),
+                icon: Icon(Icons.copy_rounded, size: 18, color: context.kMuted),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: body));
                   showSnack(context, 'Copied to clipboard');
@@ -274,7 +262,7 @@ class _PaperDetailScreenState extends State<PaperDetailScreen>
           const Divider(height: 20),
           SelectableText(body,
               style:
-                  const TextStyle(fontSize: 14.5, height: 1.55, color: kInk)),
+                  TextStyle(fontSize: 14.5, height: 1.55, color: context.kInk)),
         ],
       ),
     );
@@ -283,8 +271,8 @@ class _PaperDetailScreenState extends State<PaperDetailScreen>
   Widget _bottomBar(Paper p) {
     return Container(
       padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
-      decoration: const BoxDecoration(
-          color: kSurface, border: Border(top: BorderSide(color: kBorder))),
+      decoration: BoxDecoration(
+          color: context.kSurface, border: Border(top: BorderSide(color: context.kBorder))),
       child: SafeArea(
         top: false,
         child: Row(
@@ -292,8 +280,8 @@ class _PaperDetailScreenState extends State<PaperDetailScreen>
             Expanded(
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: kPrimary,
-                  side: const BorderSide(color: kPrimary),
+                  foregroundColor: context.kPrimary,
+                  side: BorderSide(color: context.kPrimary),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(kRadius)),

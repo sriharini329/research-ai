@@ -22,16 +22,16 @@ class AboutScreen extends StatelessWidget {
                   color: Colors.white, size: 50),
             ),
             const SizedBox(height: 20),
-            const Text('Research AI',
+            Text('Research AI',
                 style: TextStyle(
-                    fontSize: 24, fontWeight: FontWeight.w800, color: kInk)),
+                    fontSize: 24, fontWeight: FontWeight.w800, color: context.kInk)),
             const SizedBox(height: 6),
-            const Text('Version 1.0.0', style: TextStyle(color: kMuted)),
+            Text('Version 1.0.0', style: TextStyle(color: context.kMuted)),
             const SizedBox(height: 18),
-            const Text(
+            Text(
               'Empowering researchers with AI-driven insights — summarize papers, ask questions, and generate citations in seconds.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: kMuted, height: 1.6),
+              style: TextStyle(color: context.kMuted, height: 1.6),
             ),
           ],
         ),

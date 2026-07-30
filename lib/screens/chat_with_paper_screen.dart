@@ -3,7 +3,6 @@ import 'package:research_ai/utils/app_theme.dart';
 import 'package:research_ai/models/paper.dart';
 import 'package:research_ai/models/session.dart';
 import 'package:research_ai/models/chat_message.dart';
-import 'package:research_ai/services/paper_service.dart';
 import 'package:research_ai/services/api_service.dart';
 
 class ChatWithPaperScreen extends StatefulWidget {
@@ -14,7 +13,6 @@ class ChatWithPaperScreen extends StatefulWidget {
 }
 
 class _ChatWithPaperScreenState extends State<ChatWithPaperScreen> {
-  final _ai = PaperService();
   final _ctrl = TextEditingController();
   final _scroll = ScrollController();
   final List<ChatMessage> _messages = [];
@@ -35,6 +33,7 @@ class _ChatWithPaperScreenState extends State<ChatWithPaperScreen> {
 
   Future<void> _init() async {
     try {
+
       // ensure we have the paper text for Groq
       if (widget.paper.content.isEmpty) {
         final full = await ApiService.getPaperDetail(widget.paper.id);
@@ -65,28 +64,23 @@ class _ChatWithPaperScreenState extends State<ChatWithPaperScreen> {
       _answering = true;
     });
     _down();
-
-    // save user message (fire and forget)
+    // Ask backend
     try {
-      await ApiService.saveChatMessage(
-          widget.paper.id, Session.userId!, 'user', q);
-    } catch (_) {}
-
-    // Groq answer in app
-    final a = await _ai.ask(
-        text: widget.paper.content, history: _messages, question: q);
-    if (!mounted) return;
-    setState(() {
-      _messages.add(ChatMessage(text: a, isUser: false));
-      _answering = false;
-    });
-    _down();
-
-    // save ai message
-    try {
-      await ApiService.saveChatMessage(
-          widget.paper.id, Session.userId!, 'ai', a);
-    } catch (_) {}
+      final a = await ApiService.ask(widget.paper.id, Session.userId!, q);
+      if (!mounted) return;
+      setState(() {
+        _messages.add(ChatMessage(text: a, isUser: false));
+        _answering = false;
+      });
+      _down();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _messages.add(ChatMessage(text: "Error: $e", isUser: false));
+        _answering = false;
+      });
+      _down();
+    }
   }
 
   void _down() {
@@ -106,7 +100,7 @@ class _ChatWithPaperScreenState extends State<ChatWithPaperScreen> {
         children: [
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator(color: kPrimary))
+                ? Center(child: CircularProgressIndicator(color: context.kPrimary))
                 : _messages.isEmpty
                     ? _empty()
                     : ListView.builder(
@@ -130,11 +124,11 @@ class _ChatWithPaperScreenState extends State<ChatWithPaperScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.chat_bubble_outline_rounded,
-                size: 52, color: kPrimary.withOpacity(0.4)),
+                size: 52, color: context.kPrimary.withValues(alpha: 0.4)),
             const SizedBox(height: 14),
-            const Text('Ask anything about this paper',
+            Text('Ask anything about this paper',
                 style: TextStyle(
-                    fontWeight: FontWeight.w700, color: kInk, fontSize: 16)),
+                    fontWeight: FontWeight.w700, color: context.kInk, fontSize: 16)),
             const SizedBox(height: 18),
             ..._suggestions.map((s) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -144,11 +138,11 @@ class _ChatWithPaperScreenState extends State<ChatWithPaperScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                          color: kChipBg,
+                          color: context.kChipBg,
                           borderRadius: BorderRadius.circular(12)),
                       child: Text(s,
-                          style: const TextStyle(
-                              color: kPrimaryDark, fontWeight: FontWeight.w600)),
+                          style: TextStyle(
+                              color: context.kPrimaryDark, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 )),
@@ -167,18 +161,18 @@ class _ChatWithPaperScreenState extends State<ChatWithPaperScreen> {
             BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
         decoration: BoxDecoration(
           gradient: u ? kViolet : null,
-          color: u ? null : kSurface,
+          color: u ? null : context.kSurface,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
             bottomLeft: Radius.circular(u ? 16 : 4),
             bottomRight: Radius.circular(u ? 4 : 16),
           ),
-          border: u ? null : Border.all(color: kBorder),
+          border: u ? null : Border.all(color: context.kBorder),
         ),
         child: SelectableText(m.text,
             style: TextStyle(
-                color: u ? Colors.white : kInk, fontSize: 14.5, height: 1.4)),
+                color: u ? Colors.white : context.kInk, fontSize: 14.5, height: 1.4)),
       ),
     );
   }
@@ -189,20 +183,20 @@ class _ChatWithPaperScreenState extends State<ChatWithPaperScreen> {
           margin: const EdgeInsets.symmetric(vertical: 5),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-              color: kSurface,
+              color: context.kSurface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: kBorder)),
-          child: const SizedBox(
+              border: Border.all(color: context.kBorder)),
+          child: SizedBox(
               height: 16,
               width: 16,
-              child: CircularProgressIndicator(strokeWidth: 2, color: kPrimary)),
+              child: CircularProgressIndicator(strokeWidth: 2, color: context.kPrimary)),
         ),
       );
 
   Widget _composer() => Container(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-        decoration: const BoxDecoration(
-            color: kSurface, border: Border(top: BorderSide(color: kBorder))),
+        decoration: BoxDecoration(
+            color: context.kSurface, border: Border(top: BorderSide(color: context.kBorder))),
         child: SafeArea(
           top: false,
           child: Row(
@@ -215,7 +209,7 @@ class _ChatWithPaperScreenState extends State<ChatWithPaperScreen> {
                   onSubmitted: (_) => _send(),
                   decoration: InputDecoration(
                     hintText: 'Ask a question…',
-                    fillColor: kBackground,
+                    fillColor: context.kBackground,
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 12),
                     border: OutlineInputBorder(

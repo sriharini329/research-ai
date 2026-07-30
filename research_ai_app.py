@@ -1,5 +1,10 @@
 import os
+import time
+import io
+import re
 import json
+import base64
+import fitz
 import requests
 import pymysql
 from datetime import datetime
@@ -36,11 +41,12 @@ db = SQLAlchemy(app)
 
 GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 GROQ_MODEL = 'llama-3.3-70b-versatile'
-MAX_PAPER_CHARS = 28000
+MAX_PAPER_CHARS = 6000
 
 # Load Groq Keys
 GROQ_API_KEYS = []
 keys_str = os.environ.get('GROQ_API_KEYS') or os.environ.get('GROQ_API_KEY')
+print("GROQ_API_KEYS loaded:", keys_str[:10] + "..." if keys_str else "NOT FOUND")
 if keys_str:
     GROQ_API_KEYS = [k.strip() for k in keys_str.replace(',', ' ').split() if k.strip()]
 
@@ -54,113 +60,139 @@ def _clip(text):
     return text or ''
 
 
-def mock_ai_response(messages):
-    """Generates realistic mock AI responses for testing when no Groq keys are present."""
-    last_msg = messages[-1]['content'] if messages else ""
-    system_instruction = messages[0]['content'] if messages else ""
-    
-    # 1) Metadata Extraction Request
-    if "{" in system_instruction or "bibliographic metadata" in system_instruction:
-        # Infer title from text or messages
-        title = "Research on Deep Learning Applications"
-        for msg in reversed(messages):
-            if msg['role'] == 'user' and len(msg['content']) > 50:
-                # Skip prompt header instruction if it exists
-                content_parts = msg['content'].split('\n\n', 1)
-                paper_text = content_parts[1] if len(content_parts) > 1 else msg['content']
-                # Try to extract the first line as a title candidate
-                lines = [l.strip() for l in paper_text.split('\n') if l.strip()]
-                if lines:
-                    title = lines[0][:100]
-                    break
-        return json.dumps({
-            "title": title,
-            "authors": "Smith et al.",
-            "year": "2024"
-        })
-        
-    # 2) IEEE Citations Extraction
-    elif "IEEE-style reference lists" in system_instruction:
-        return (
-            "[1] J. Smith, A. Johnson, and M. Davis, \"Advances in Artificial Intelligence Systems,\" IEEE Transactions on Pattern Analysis, vol. 45, no. 3, pp. 289-302, 2023.\n"
-            "[2] R. Patterson and K. Li, \"Efficient Architectures for Large-Scale Data Models,\" in Proc. Int. Conf. on Machine Learning (ICML), 2022, pp. 1120-1129.\n"
-            "[3] H. Miller, \"A Survey of Grounded Reasoning Systems,\" Journal of Cognitive Engineering, vol. 18, pp. 45-58, 2024.\n"
-            "[4] A. Zhang and Y. Tan, \"Practical Deployment of Vector Embeddings in Browser Applications,\" Tech. Rep. AI-2023-14, 2023."
-        )
-        
-    # 3) Single Citation Formatting (APA, MLA, IEEE, Chicago, BibTeX)
-    elif "citation for the paper" in system_instruction or "single citation" in system_instruction:
-        style = "IEEE"
-        for style_name in ["APA", "MLA", "IEEE", "Chicago", "BibTeX"]:
-            if style_name in system_instruction or style_name in last_msg:
-                style = style_name
-                break
-                
-        title = "Research on Deep Learning Applications"
-        if style == "APA":
-            return f"Smith, J., & Johnson, A. (2024). {title}. Journal of Research AI, 5(2), 120-135."
-        elif style == "MLA":
-            return f'Smith, John, and Alice Johnson. "{title}." Journal of Research AI, vol. 5, no. 2, 2024, pp. 120-135.'
-        elif style == "Chicago":
-            return f'Smith, John, and Alice Johnson. "{title}." Journal of Research AI 5, no. 2 (2024): 120-135.'
-        elif style == "BibTeX":
-            return (
-                f"@article{{smith2024research,\n"
-                f'  author = {{Smith, John and Johnson, Alice}},\n'
-                f'  title = {{{title}}},\n'
-                f'  journal = {{Journal of Research AI}},\n'
-                f'  volume = {{5}},\n'
-                f'  number = {{2}},\n'
-                f'  pages = {{120--135}},\n'
-                f'  year = {{2024}}\n'
-                f"}}"
-            )
-        else: # IEEE
-            return f'J. Smith and A. Johnson, "{title}," J. Res. AI, vol. 5, no. 2, pp. 120-135, 2024.'
-            
-    # 4) Paper Summarization
-    elif "Summarize this paper" in last_msg or "Explain papers in simple, clear language" in system_instruction:
-        return (
-            "### What it's about\n"
-            "This paper explores novel methods for addressing performance bottlenecks in modern machine learning workflows. "
-            "It outlines key architectural changes and structural designs that minimize operational overhead during training and deployment.\n\n"
-            "### Methods\n"
-            "The researchers design and validate an empirical framework across several multi-node configurations. "
-            "They evaluate the throughput, memory foot-print, and convergence latency on standardized image and text classification benchmarks.\n\n"
-            "### Key Findings\n"
-            "- **Enhanced Throughput**: The proposed architecture increases training data processing speeds by up to 22%.\n"
-            "- **Memory Optimization**: Reduced overall VRAM usage by 18%, allowing larger batches to fit on consumer hardware.\n"
-            "- **Robust Convergence**: Maintained target accuracy rates without requiring custom optimizer tuning.\n\n"
-            "### Why it Matters\n"
-            "This optimization lowers the cost and resource barriers to training powerful models, facilitating access for smaller labs and developers.\n\n"
-            "### Limitations\n"
-            "- Evaluations were primarily run on synthetic benchmark suites rather than live production pipelines.\n"
-            "- The framework has not yet been tested on extremely heterogeneous or multi-modal datasets."
-        )
-        
-    # 5) Chat grounded in Paper Q&A
-    else:
-        q = last_msg.lower()
-        if "contribution" in q or "novelty" in q:
-            return "Based on the paper, the primary contribution is the introduction of a lightweight optimization layer that improves training speed and data throughput while lowering GPU memory requirements."
-        elif "method" in q or "how does it work" in q or "methodology" in q:
-            return "The methodology details a multi-phase pipeline: (1) client-side preprocessing, (2) memory alignment via page layout analysis, and (3) gradient caching to reduce inter-device latency."
-        elif "limit" in q or "weakness" in q or "drawback" in q:
-            return "According to the paper, the limitations include a reliance on homogeneous GPU hardware for maximum performance and an increase in CPU-side processing queues when handling small, fragmented files."
-        elif "findings" in q or "results" in q or "conclusion" in q:
-            return "The findings demonstrate a 22% improvement in overall execution speed and an 18% reduction in memory consumption. The authors conclude that memory pooling successfully bypasses bandwidth choke points."
-        else:
-            return (
-                f"From reviewing the document context, the paper discusses optimization strategies relevant to your question: '{last_msg}'.\n\n"
-                "Specifically, the text highlights that scaling and data layout efficiency are critical. "
-                "Let me know if you would like me to explain a particular detail or search for another topic!"
-            )
+def _clip_end(text):
+    if not text:
+        return ""
+    if len(text) <= MAX_PAPER_CHARS:
+        return text
+    return text[-MAX_PAPER_CHARS:]
+
+
+
+def clean_extracted_text(text):
+    if not text:
+        return ""
+    import re
+    # Remove excessive blank lines
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    # Fix broken line wraps
+    text = re.sub(r'([^\.\!\?\:\;\-\n])\n+([a-z])', r'\1 \2', text)
+    # Remove hyphenated line wraps
+    text = re.sub(r'([a-zA-Z]+)-\n+([a-zA-Z]+)', r'\1\2', text)
+    return text.strip()
+
+def extract_text_from_pdf(pdf_bytes):
+    import io
+    extracted_text = ""
+    # Stage 1: PyMuPDF
+    try:
+        import fitz
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        for page in doc:
+            text = page.get_text("text")
+            if text:
+                extracted_text += text + "\n"
+        doc.close()
+    except Exception as e:
+        print("PyMuPDF failed:", e)
+
+    if len(extracted_text.strip()) > 500:
+        return extracted_text
+
+    print("Falling back to pdfplumber...")
+    try:
+        import pdfplumber
+        extracted_text = ""
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text()
+                if text:
+                    extracted_text += text + "\n"
+    except Exception as e:
+        print("pdfplumber failed:", e)
+
+    if len(extracted_text.strip()) > 500:
+        return extracted_text
+
+    print("Falling back to pdfminer...")
+    try:
+        from pdfminer.high_level import extract_text
+        extracted_text = extract_text(io.BytesIO(pdf_bytes))
+    except Exception as e:
+        print("pdfminer failed:", e)
+
+    if len(extracted_text.strip()) > 500:
+        return extracted_text
+
+    print("Falling back to OCR...")
+    try:
+        from pdf2image import convert_from_bytes
+        import pytesseract
+        extracted_text = ""
+        images = convert_from_bytes(pdf_bytes, dpi=200, fmt="jpeg")
+        for img in images:
+            text = pytesseract.image_to_string(img)
+            if text:
+                extracted_text += text + "\n"
+    except Exception as e:
+        print("OCR failed:", e)
+    return extracted_text
+
+def groq_chat_with_retry(messages, max_tokens=1024, temperature=0.1, required_length=10, max_retries=3):
+    import time
+    for attempt in range(max_retries):
+        result = groq_chat(messages, max_tokens=max_tokens, temperature=temperature)
+        if result and len(result.strip()) >= required_length:
+            return result.strip()
+        print(f"AI response too short or empty. Retry {attempt+1}/{max_retries}")
+        time.sleep(1)
+    return None
 
 
 def groq_chat(messages, max_tokens=1024, temperature=0.4):
-    """Calls Groq chat completions with multi-key fallback. Returns text."""
+    """Calls Groq chat completions with multi-key fallback and retries. Returns text."""
+    import time
     if not GROQ_API_KEYS:
-        return mock_ai_response(messages)
+        return "AI summary unavailable because no Groq API key is configured."
+        
+    max_retries_per_key = 3
+    for key in GROQ_API_KEYS:
+        for attempt in range(max_retries_per_key):
+            try:
+                resp = requests.post(
+                    GROQ_URL,
+                    headers={'Authorization': f'Bearer {key}',
+                             'Content-Type': 'application/json'},
+                    json={
+                        'model': GROQ_MODEL,
+                        'messages': messages,
+                        'temperature': temperature,
+                        'max_tokens': max_tokens,
+                        'top_p': 0.9,
+                        'stream': False,
+                    },
+                    timeout=60,
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    choices = data.get('choices', [])
+                    if choices:
+                        return choices[0]['message']['content']
+
+                elif resp.status_code == 429:
+                    print(f"Groq Rate Limit (Key {key[:4]}..., Attempt {attempt+1}): {resp.status_code}")
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                    continue
+
+                else:
+                    print(f"Groq Error (Key {key[:4]}...): {resp.status_code} - {resp.text}")
+                    break # Skip to next key
+            except Exception as e:
+                print(f"Groq Exception (Key {key[:4]}...): {e}")
+                time.sleep(1)
+                continue
+    print("All Groq API calls failed.")
+    return None
         
     for key in GROQ_API_KEYS:
         try:
@@ -183,15 +215,22 @@ def groq_chat(messages, max_tokens=1024, temperature=0.4):
                 choices = data.get('choices', [])
                 if choices:
                     return choices[0]['message']['content']
+
             elif resp.status_code == 429:
-                continue  # rate limited on this key, try next
-            else:
+                print("Groq Rate Limit:", resp.status_code)
+                print(resp.text)
                 continue
-        except Exception:
+
+            else:
+                print("Groq Error:", resp.status_code)
+                print(resp.text)
+                continue
+        except Exception as e:
+            print("Groq Exception:", e)
             continue
     # Fallback to mock if API calls fail
-    print("Groq API calls failed. Falling back to Mock AI Mode.")
-    return mock_ai_response(messages)
+    print("All Groq API calls failed.")
+    return "AI summary unavailable because no Groq API key is configured."
 
 
 # ─────────────────────────────────────────
@@ -225,6 +264,9 @@ class Paper(db.Model):
     year        = db.Column(db.String(10),  nullable=True)
     content     = db.Column(db.Text().with_variant(LONGTEXT, "mysql"), nullable=False)
     summary     = db.Column(db.Text, nullable=True)
+    abstract    = db.Column(db.Text, nullable=True)
+    keywords    = db.Column(db.Text, nullable=True)
+    references  = db.Column(db.Text, nullable=True)
     citations   = db.Column(db.Text, nullable=True)   # IEEE reference list cache
     is_favorite = db.Column(db.Boolean, default=False)
     status      = db.Column(db.String(20), default='toRead')  # toRead|reading|completed
@@ -241,6 +283,33 @@ class ChatMessage(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+
+class Notification(db.Model):
+    __tablename__ = 'notifications'
+    id          = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id     = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    paper_id    = db.Column(db.Integer, db.ForeignKey('papers.id'), nullable=True)
+    title       = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    icon        = db.Column(db.String(50), nullable=False)
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+    is_read     = db.Column(db.Boolean, default=False)
+
+def create_notification(user_id, title, description, icon, paper_id=None):
+    try:
+        n = Notification(
+            user_id=user_id,
+            paper_id=paper_id,
+            title=title,
+            description=description,
+            icon=icon
+        )
+        db.session.add(n)
+        db.session.commit()
+    except Exception as e:
+        print(f"Failed to create notification: {e}")
+        db.session.rollback()
+
 class Note(db.Model):
     __tablename__ = 'notes'
     id          = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -249,6 +318,18 @@ class Note(db.Model):
     paper_title = db.Column(db.String(500), nullable=True)
     content     = db.Column(db.Text, nullable=False)
     color       = db.Column(db.String(20), default='#F59E0B')
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+
+class SupportMessage(db.Model):
+    __tablename__ = 'support_messages'
+    id          = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    ticket_id   = db.Column(db.String(50), unique=True, nullable=False)
+    user_id     = db.Column(db.Integer, nullable=True)
+    name        = db.Column(db.String(255), nullable=False)
+    email       = db.Column(db.String(255), nullable=False)
+    subject     = db.Column(db.String(255), nullable=False)
+    message     = db.Column(db.Text, nullable=False)
+    status      = db.Column(db.String(50), default='Open')
     created_at  = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -296,6 +377,7 @@ def login():
         session = ActiveSession(email=user.email)
         db.session.add(session)
         db.session.commit()
+        create_notification(user.id, 'Login successful', 'Welcome back to ResearchAI!', 'Icons.login')
         return jsonify({'message': 'Login successful', 'user': {
             'id': user.id, 'name': user.name, 'email': user.email,
             'interests': json.loads(user.interests or '[]')
@@ -384,6 +466,7 @@ def update_profile(user_id):
         if 'interests' in data:
             user.interests = json.dumps(data['interests'])
         db.session.commit()
+        create_notification(user_id, 'Profile updated', 'Your profile information has been successfully updated.', 'Icons.person_outline')
         return jsonify({'message': 'Profile updated'}), 200
     except Exception as e:
         db.session.rollback()
@@ -442,6 +525,8 @@ def get_paper_detail(paper_id):
             'id': p.id, 'file_name': p.file_name, 'title': p.title,
             'authors': p.authors, 'year': p.year, 'content': p.content,
             'summary': p.summary, 'citations': p.citations,
+            'abstract': p.abstract, 'keywords': p.keywords,
+            'references': p.references,
             'is_favorite': p.is_favorite, 'status': p.status,
             'created_at': p.created_at.strftime('%d %b %Y')
         }), 200
@@ -449,51 +534,148 @@ def get_paper_detail(paper_id):
         return jsonify({'error': str(e)}), 500
 
 
+
+def renumber_references(ref_text):
+    if not ref_text or "No references found" in ref_text:
+        return ref_text
+    
+    lines = [line.strip() for line in ref_text.split('\n') if line.strip()]
+    
+    # Remove AI introductory lines
+    while lines:
+        first_line = lines[0].lower()
+        # Common AI intros or lines ending in a colon (e.g., "Here are the references:")
+        if (first_line.startswith("here are") or 
+            first_line.startswith("below are") or 
+            first_line.startswith("the extracted") or 
+            first_line.startswith("the following") or 
+            "references:" in first_line or 
+            first_line.endswith(":")):
+            lines.pop(0)
+        else:
+            break
+
+    renumbered_lines = []
+    count = 1
+    for line in lines:
+        if count > 5:
+            break
+        # Strip existing numbering patterns: [1], 1., 1), etc.
+        # This matches leading spaces, optional brackets/parentheses, digits, punctuation, and trailing spaces
+        cleaned_line = re.sub(r'^\s*\[?\d+\]?[\.\)]?\s*', '', line)
+        if cleaned_line:
+            renumbered_lines.append(f"[{count}] {cleaned_line}")
+            count += 1
+            
+    if not renumbered_lines:
+        return ref_text
+        
+    return '\n\n'.join(renumbered_lines)
+
 @app.route('/papers/analyze', methods=['POST'])
 def analyze_paper():
-    """Analyze paper and always use uploaded filename as the title."""
     try:
         data = request.get_json()
-
-        required = ['user_id', 'file_name', 'content']
+        required = ['user_id', 'file_name', 'file_bytes']
+        
         if not data or not all(k in data for k in required):
-            return jsonify({'error': 'Missing required fields'}), 400
+            if 'content' in data and 'file_bytes' not in data:
+                pass
+            else:
+                return jsonify({'error': 'Missing required fields'}), 400
 
-        content = data['content']
+        user_id = data['user_id']
+        file_name = data['file_name']
+        
+        extracted_text = ""
+        if 'file_bytes' in data and data['file_bytes']:
+            try:
+                pdf_bytes = base64.b64decode(data['file_bytes'])
+                extracted_text = extract_text_from_pdf(pdf_bytes)
+                extracted_text = clean_extracted_text(extracted_text)
+            except Exception as e:
+                return jsonify({'error': f'Failed to process PDF: {str(e)}'}), 400
+        else:
+            extracted_text = data.get('content', '')
 
-        # Always use uploaded filename as title
-        title = data['file_name'].rsplit('.', 1)[0]
+        if len(extracted_text.strip()) < 100:
+            return jsonify({'error': 'No text could be extracted from the file. It may be corrupted or highly protected.'}), 400
 
-        authors = "Smith et al."
-        year = "2024"
+        meta_json_str = groq_chat_with_retry([
+            {'role': 'system', 'content': 'You extract bibliographic metadata. Reply ONLY with raw JSON, no markdown, no explanation.'},
+            {'role': 'user', 'content': 'From this paper return JSON: {"title":"...","authors":"...","year":"YYYY","abstract":"...","keywords":"..."}. If unknown use "".\n\n' + _clip(extracted_text)}
+        ], max_tokens=600, temperature=0.1, required_length=20, max_retries=3)
+        
+        title = file_name.rsplit('.', 1)[0]
+        authors = ""
+        year = ""
+        abstract = ""
+        keywords = ""
+        
+        if meta_json_str:
+            try:
+                meta_str = meta_json_str.strip()
+                if meta_str.startswith('```json'):
+                    meta_str = meta_str.split('```json')[1].split('```')[0].strip()
+                elif meta_str.startswith('```'):
+                    meta_str = meta_str.split('```')[1].split('```')[0].strip()
+                import json
+                meta = json.loads(meta_str)
+                title = meta.get('title', title) or title
+                authors = meta.get('authors', '')
+                year = meta.get('year', '')
+                abstract = meta.get('abstract', '')
+                keywords = meta.get('keywords', '')
+            except Exception:
+                pass
 
-        # Generate summary
-        summary = groq_chat([
-            {
-                'role': 'system',
-                'content': 'You are ResearchAI. Explain papers in simple, clear language with no jargon.'
-            },
-            {
-                'role': 'user',
-                'content': "Summarize this paper in SIMPLE language with short sections: What it's about, Methods, Key findings, Why it matters, Limitations.\n\n" + _clip(content)
-            },
-        ], max_tokens=1500)
+        if not abstract or len(abstract.strip()) < 10:
+            abstract = groq_chat_with_retry([
+                {'role': 'system', 'content': 'You generate concise abstracts. Return ONLY the abstract text.'},
+                {'role': 'user', 'content': 'Generate a concise 1-paragraph abstract for this paper:\n\n' + _clip(extracted_text)}
+            ], max_tokens=400, required_length=50, max_retries=4)
 
-        if summary is None:
-            summary = "Summary not available."
+        if not keywords or len(keywords.strip()) < 5:
+            keywords = groq_chat_with_retry([
+                {'role': 'system', 'content': 'You generate keywords. Return ONLY a comma separated list of keywords.'},
+                {'role': 'user', 'content': 'Generate 5 to 10 keywords for this paper:\n\n' + _clip(extracted_text)}
+            ], max_tokens=100, required_length=10, max_retries=3)
 
+        summary = groq_chat_with_retry([
+            {'role': 'system', 'content': 'You are ResearchAI. Explain papers in simple, clear language with no jargon.'},
+            {'role': 'user', 'content': "Summarize this paper in SIMPLE language with short sections: What it's about, Methods, Key findings, Why it matters, Limitations.\n\n" + _clip(extracted_text)}
+        ], max_tokens=1500, required_length=100, max_retries=4)
+
+        references = groq_chat_with_retry([
+            {'role': 'system', 'content': '''You are a reference extractor.\n\nExtract ONLY the first 5 references from the uploaded paper.\n\nRules:\n- Return at most 5 references.\n- Copy them exactly as they appear.\n- Do NOT generate new references.\n- Do NOT complete incomplete references.\n- Do NOT reformat.\n- Do NOT output any introductory text (e.g., "Here are the references:"). Start directly with the references.\n- If there are fewer than 5 references, return only those available.\n- If no References section exists, return exactly:\n"No references found in the uploaded paper."'''},
+            {'role': 'user', 'content': _clip_end(extracted_text)}
+        ], max_tokens=800, temperature=0, required_length=10, max_retries=3)
+        
+        if references:
+            references = renumber_references(references)
+        else:
+            references = "No references found in the uploaded paper."
+            
+        if not title or not abstract or not summary or not keywords:
+            return jsonify({'error': 'AI extraction pipeline failed completely after maximum retries. The paper could not be analyzed.'}), 500
+            
         paper = Paper(
-            user_id=data['user_id'],
-            file_name=data['file_name'],
+            user_id=user_id,
+            file_name=file_name,
             title=title,
             authors=authors,
             year=year,
-            content=content,
+            abstract=abstract,
+            keywords=keywords,
+            references=references,
+            content=extracted_text,
             summary=summary,
         )
 
         db.session.add(paper)
         db.session.commit()
+
+        create_notification(user_id, 'Paper analysis completed', f'Your paper "{paper.title}" has been analyzed and is ready to view.', 'Icons.check_circle_outline', paper.id)
 
         return jsonify({
             'message': 'Paper analyzed',
@@ -504,6 +686,9 @@ def analyze_paper():
                 'authors': paper.authors,
                 'year': paper.year,
                 'summary': paper.summary,
+                'abstract': paper.abstract,
+                'keywords': paper.keywords,
+                'references': paper.references,
                 'is_favorite': paper.is_favorite,
                 'status': paper.status
             }
@@ -513,7 +698,6 @@ def analyze_paper():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-
 @app.route('/papers/<int:paper_id>/citations', methods=['GET'])
 def paper_citations(paper_id):
     """IEEE reference list (cached after first generation)."""
@@ -521,18 +705,43 @@ def paper_citations(paper_id):
         p = Paper.query.get(paper_id)
         if not p:
             return jsonify({'error': 'Paper not found'}), 404
+
         if p.citations:
             return jsonify({'citations': p.citations}), 200
+
         result = groq_chat([
-            {'role': 'system', 'content': 'You produce accurate IEEE-style reference lists.'},
-            {'role': 'user',
-             'content': 'Find the reference/bibliography entries and reformat them in IEEE style, numbered [1], [2], [3]. If none are found, write "No reference list detected." then suggest 3-5 relevant works under "Suggested related references (AI-generated, verify):". Output only the list.\n\n' + _clip(p.content)},
-        ], max_tokens=1800)
+            {
+                'role': 'system',
+                'content': '''You are an IEEE reference extractor.
+
+    Extract ONLY the first 5 references from the uploaded paper.
+
+    Rules:
+    - Return at most 5 references.
+    - Format them in IEEE style.
+    - Do NOT generate any new references.
+    - Do NOT suggest related papers.
+    - Do NOT output any introductory text (e.g., "Here are the references:"). Start directly with the references.
+    - If fewer than 5 references exist, return only those.
+    - If no references exist, return exactly:
+    "No references found in the uploaded paper."
+    '''
+            },
+            {
+                'role': 'user',
+                'content': _clip_end(p.content)
+            }
+        ], max_tokens=800, temperature=0)
+        result = renumber_references(result)
+
         if result is None:
             return jsonify({'error': 'AI is busy right now. Please try again.'}), 503
+
         p.citations = result
         db.session.commit()
+
         return jsonify({'citations': result}), 200
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -554,6 +763,7 @@ def cite_paper(paper_id):
         ], max_tokens=400, temperature=0.1)
         if result is None:
             return jsonify({'error': 'AI is busy right now. Please try again.'}), 503
+        create_notification(p.user_id, 'Citation generated', f'{style} citation was generated for "{p.title}".', 'Icons.format_quote', p.id)
         return jsonify({'style': style, 'citation': result.strip()}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -567,6 +777,8 @@ def toggle_favorite(paper_id):
             return jsonify({'error': 'Paper not found'}), 404
         p.is_favorite = not p.is_favorite
         db.session.commit()
+        if p.is_favorite:
+            create_notification(p.user_id, 'Paper bookmarked', f'"{p.title}" was added to your favorites.', 'Icons.bookmark_border', p.id)
         return jsonify({'message': 'Updated', 'is_favorite': p.is_favorite}), 200
     except Exception as e:
         db.session.rollback()
@@ -600,6 +812,7 @@ def delete_paper(paper_id):
         ChatMessage.query.filter_by(paper_id=paper_id).delete()
         db.session.delete(p)
         db.session.commit()
+        create_notification(p.user_id, 'Paper deleted', f'"{p.title}" was removed from your library.', 'Icons.delete_outline')
         return jsonify({'message': 'Paper deleted'}), 200
     except Exception as e:
         db.session.rollback()
@@ -624,43 +837,80 @@ def get_chat(paper_id):
 
 
 @app.route('/papers/<int:paper_id>/chat', methods=['POST'])
-def ask_paper(paper_id):
+def save_chat_message(paper_id):
     try:
         data = request.get_json()
-        question = (data.get('question') or '').strip() if data else ''
-        user_id  = data.get('user_id')
-        if not question:
-            return jsonify({'error': 'Question required'}), 400
+        user_id = data.get('user_id')
+        role = data.get('role')
+        text = data.get('text')
+
+        if not text or not role:
+            return jsonify({'error': 'role and text are required'}), 400
+
         p = Paper.query.get(paper_id)
         if not p:
             return jsonify({'error': 'Paper not found'}), 404
 
-        # save user message
-        db.session.add(ChatMessage(paper_id=paper_id, user_id=user_id,
-                                   role='user', text=question))
+        db.session.add(ChatMessage(paper_id=paper_id, user_id=user_id, role=role, text=text))
+        db.session.commit()
+        if role == 'user':
+            create_notification(user_id, 'AI Chat question asked', 'You asked a question in the chat.', 'Icons.chat_bubble_outline', paper_id)
+            
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/papers/<int:paper_id>/ask', methods=['POST'])
+def ask_paper(paper_id):
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        question = data.get('question')
+
+        if not question or not user_id:
+            return jsonify({'error': 'user_id and question are required'}), 400
+
+        p = Paper.query.get(paper_id)
+        if not p:
+            return jsonify({'error': 'Paper not found'}), 404
+
+        # Save user question to DB
+        user_msg = ChatMessage(paper_id=paper_id, user_id=user_id, role='user', text=question)
+        db.session.add(user_msg)
         db.session.commit()
 
-        # build context from recent history
-        history = ChatMessage.query.filter_by(paper_id=paper_id)\
-            .order_by(ChatMessage.created_at.desc()).limit(8).all()
-        history = list(reversed(history))
+        # Load history
+        history = ChatMessage.query.filter_by(paper_id=paper_id).order_by(ChatMessage.created_at.asc()).all()
 
-        messages = [{
-            'role': 'system',
-            'content': 'You are ResearchAI. Answer ONLY from the paper below. If the answer is not in it, say so and mark general info as "(general knowledge)".\n\n=== PAPER ===\n' + _clip(p.content) + '\n=== END ==='
-        }]
-        for m in history:
-            messages.append({'role': 'user' if m.role == 'user' else 'assistant',
-                             'content': m.text})
+        messages = [
+            {
+                'role': 'system',
+                'content': 'You are ResearchAI. Answer ONLY from the paper below. If the answer is not in it, say so and mark general info as "(general knowledge)".\n\n=== PAPER ===\n' + _clip(p.content) + '\n=== END ==='
+            }
+        ]
+        
+        recent_history = history[-9:-1] if len(history) > 8 else history[:-1] # Exclude the current message we just added? Wait, history includes it. So let's exclude the last one.
+        recent_history = [msg for msg in history if msg.id != user_msg.id][-8:]
 
-        answer = groq_chat(messages, max_tokens=1024)
-        if answer is None:
-            return jsonify({'error': 'AI is busy right now. Please try again.'}), 503
+        for m in recent_history:
+            role = 'user' if m.role == 'user' else 'assistant'
+            messages.append({'role': role, 'content': m.text})
+            
+        messages.append({'role': 'user', 'content': question})
 
-        db.session.add(ChatMessage(paper_id=paper_id, user_id=user_id,
-                                   role='ai', text=answer))
+        answer = groq_chat_with_retry(messages, max_tokens=1024, max_retries=3, required_length=1)
+        if not answer:
+            answer = "AI response unavailable because no Groq API key is configured or the service is down."
+
+        # Save AI answer to DB
+        ai_msg = ChatMessage(paper_id=paper_id, user_id=user_id, role='ai', text=answer)
+        db.session.add(ai_msg)
         db.session.commit()
+        create_notification(user_id, 'AI Chat response received', 'AI has responded to your question.', 'Icons.quickreply_outlined', paper_id)
         return jsonify({'answer': answer}), 200
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -674,6 +924,20 @@ def ask_paper(paper_id):
 def get_notes(user_id):
     try:
         notes = Note.query.filter_by(user_id=user_id)\
+            .order_by(Note.created_at.desc()).all()
+        return jsonify([{
+            'id': n.id, 'content': n.content, 'paper_title': n.paper_title,
+            'color': n.color,
+            'created_at': n.created_at.strftime('%d %b %Y')
+        } for n in notes]), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/papers/<int:paper_id>/notes', methods=['GET'])
+def get_paper_notes(paper_id):
+    try:
+        notes = Note.query.filter_by(paper_id=paper_id)\
             .order_by(Note.created_at.desc()).all()
         return jsonify([{
             'id': n.id, 'content': n.content, 'paper_title': n.paper_title,
@@ -699,6 +963,7 @@ def add_note():
         )
         db.session.add(note)
         db.session.commit()
+        create_notification(note.user_id, 'Notes created', 'A new note was successfully created.', 'Icons.note_add_outlined', note.paper_id)
         return jsonify({'message': 'Note added', 'id': note.id}), 201
     except Exception as e:
         db.session.rollback()
@@ -719,8 +984,74 @@ def delete_note(note_id):
         return jsonify({'error': str(e)}), 500
 
 
+
+# ─────────────────────────────────────────
+# NOTIFICATIONS ENDPOINTS
+# ─────────────────────────────────────────
+
+@app.route('/notifications/<int:user_id>', methods=['GET'])
+def get_notifications(user_id):
+    try:
+        notifs = Notification.query.filter_by(user_id=user_id).order_by(Notification.created_at.desc()).all()
+        return jsonify([{
+            'id': n.id, 'paper_id': n.paper_id, 'title': n.title,
+            'description': n.description, 'icon': n.icon,
+            'created_at': n.created_at.isoformat() + 'Z', 'is_read': n.is_read
+        } for n in notifs]), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/notifications/read_all', methods=['POST'])
+def read_all_notifications():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        Notification.query.filter_by(user_id=user_id, is_read=False).update({'is_read': True})
+        db.session.commit()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/notifications/<int:n_id>/read', methods=['POST'])
+def read_notification(n_id):
+    try:
+        n = Notification.query.get(n_id)
+        if n:
+            n.is_read = True
+            db.session.commit()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/notifications/<int:n_id>', methods=['DELETE'])
+def delete_notification(n_id):
+    try:
+        n = Notification.query.get(n_id)
+        if n:
+            db.session.delete(n)
+            db.session.commit()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/notifications/clear_all', methods=['DELETE'])
+def clear_all_notifications():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        Notification.query.filter_by(user_id=user_id).delete()
+        db.session.commit()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 # ─────────────────────────────────────────
 # HOME DASHBOARD (aggregate endpoint)
+
 # ─────────────────────────────────────────
 
 @app.route('/dashboard/<int:user_id>', methods=['GET'])
@@ -746,6 +1077,69 @@ def get_dashboard(user_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+# ─────────────────────────────────────────
+# SUPPORT ENDPOINT
+# ─────────────────────────────────────────
+import smtplib
+from email.mime.text import MIMEText
+import random
+
+@app.route('/support', methods=['POST'])
+def submit_support():
+    try:
+        data = request.get_json()
+        required = ['name', 'email', 'subject', 'message']
+        if not data or not all(k in data for k in required):
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        # Generate ticket ID
+        ticket_id = f"SUP-{random.randint(1000, 9999)}"
+        
+        # Save to DB first
+        support_msg = SupportMessage(
+            ticket_id=ticket_id,
+            user_id=data.get('user_id'),
+            name=data['name'],
+            email=data['email'],
+            subject=data['subject'],
+            message=data['message']
+        )
+        db.session.add(support_msg)
+        db.session.commit()
+
+        # Send Email
+        smtp_email = os.environ.get('SMTP_EMAIL')
+        smtp_password = os.environ.get('SMTP_APP_PASSWORD')
+        
+        if smtp_email and smtp_password:
+            try:
+                msg_body = f"""Ticket ID: {ticket_id}
+User Name: {data['name']}
+User Email: {data['email']}
+Subject: {data['subject']}
+Message:
+{data['message']}
+Submitted Time: {support_msg.created_at.strftime('%Y-%m-%d %H:%M:%S UTC')}
+"""
+                msg = MIMEText(msg_body)
+                msg['Subject'] = f"New Support Request - {ticket_id}"
+                msg['From'] = smtp_email
+                msg['To'] = smtp_email
+
+                server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+                server.login(smtp_email, smtp_password)
+                server.send_message(msg)
+                server.quit()
+            except Exception as email_err:
+                print(f"Failed to send email: {email_err}")
+                # We do not return 500 here because the support request was successfully saved in DB
+
+        return jsonify({'message': 'Support request submitted successfully.', 'ticket_id': ticket_id}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 # ─────────────────────────────────────────
 # FRONTEND STATIC ASSETS & CATCH-ALL ROUTE

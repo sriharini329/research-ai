@@ -24,10 +24,10 @@ You can control chat history and analytics from Privacy Settings at any time.
 We may update these terms from time to time. Continued use of the app means you accept the latest version.''';
     return Scaffold(
       appBar: AppBar(title: const Text('Terms & Conditions')),
-      body: const SingleChildScrollView(
+      body: SingleChildScrollView(
         padding: kPad,
         child: Text(body,
-            style: TextStyle(color: kInk, height: 1.7, fontSize: 14.5)),
+            style: TextStyle(color: context.kInk, height: 1.7, fontSize: 14.5)),
       ),
     );
   }

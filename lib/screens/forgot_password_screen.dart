@@ -59,19 +59,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 height: 64,
                 width: 64,
                 decoration: BoxDecoration(
-                    color: kChipBg, borderRadius: BorderRadius.circular(18)),
-                child: const Icon(Icons.lock_reset_rounded,
-                    color: kPrimary, size: 32),
+                    color: context.kChipBg, borderRadius: BorderRadius.circular(18)),
+                child: Icon(Icons.lock_reset_rounded,
+                    color: context.kPrimary, size: 32),
               ),
               const SizedBox(height: 20),
-              const Text('Reset your password',
+              Text('Reset your password',
                   style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
-                      color: kInk)),
+                      color: context.kInk)),
               const SizedBox(height: 8),
-              const Text('Enter your email and a new password.',
-                  style: TextStyle(color: kMuted)),
+              Text('Enter your email and a new password.',
+                  style: TextStyle(color: context.kMuted)),
               const SizedBox(height: 26),
               LabeledField(
                   hint: 'Email',
@@ -89,7 +89,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       _obscure
                           ? Icons.visibility_off_outlined
                           : Icons.visibility_outlined,
-                      color: kMuted, size: 20),
+                      color: context.kMuted, size: 20),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
               ),

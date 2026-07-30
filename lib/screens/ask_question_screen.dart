@@ -16,7 +16,9 @@ class _AskQuestionScreenState extends State<AskQuestionScreen> {
   @override
   void initState() {
     super.initState();
-    PaperStore.instance.load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PaperStore.instance.load();
+    });
   }
 
   @override
@@ -28,7 +30,7 @@ class _AskQuestionScreenState extends State<AskQuestionScreen> {
         builder: (context, _) {
           final store = PaperStore.instance;
           if (store.loading && store.all.isEmpty) {
-            return const Center(child: CircularProgressIndicator(color: kPrimary));
+            return Center(child: CircularProgressIndicator(color: context.kPrimary));
           }
           final papers = store.all;
           if (papers.isEmpty) {
@@ -38,17 +40,17 @@ class _AskQuestionScreenState extends State<AskQuestionScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.help_outline_rounded,
-                      size: 56, color: kPrimary.withOpacity(0.4)),
+                      size: 56, color: context.kPrimary.withOpacity(0.4)),
                   const SizedBox(height: 16),
-                  const Text('No paper to ask about yet',
+                  Text('No paper to ask about yet',
                       style: TextStyle(
                           fontWeight: FontWeight.w700,
-                          color: kInk,
+                          color: context.kInk,
                           fontSize: 16)),
                   const SizedBox(height: 6),
-                  const Text('Upload a paper first, then ask anything.',
+                  Text('Upload a paper first, then ask anything.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: kMuted)),
+                      style: TextStyle(color: context.kMuted)),
                   const SizedBox(height: 24),
                   PrimaryButton(
                     label: 'Upload Paper',
@@ -63,11 +65,11 @@ class _AskQuestionScreenState extends State<AskQuestionScreen> {
           return ListView(
             padding: kPad,
             children: [
-              const Text('Choose a paper to ask about',
+              Text('Choose a paper to ask about',
                   style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: kInk)),
+                      color: context.kInk)),
               const SizedBox(height: 14),
               ...papers.map((p) => Padding(
                     padding: const EdgeInsets.only(bottom: 10),
@@ -82,22 +84,22 @@ class _AskQuestionScreenState extends State<AskQuestionScreen> {
                             height: 42,
                             width: 42,
                             decoration: BoxDecoration(
-                                color: kChipBg,
+                                color: context.kChipBg,
                                 borderRadius: BorderRadius.circular(12)),
-                            child: const Icon(Icons.article_rounded,
-                                color: kPrimary),
+                            child: Icon(Icons.article_rounded,
+                                color: context.kPrimary),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(p.title,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    color: kInk)),
+                                    color: context.kInk)),
                           ),
-                          const Icon(Icons.chevron_right_rounded,
-                              color: kMuted),
+                          Icon(Icons.chevron_right_rounded,
+                              color: context.kMuted),
                         ],
                       ),
                     ),

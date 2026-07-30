@@ -6,6 +6,9 @@ import 'package:research_ai/screens/library_screen.dart';
 import 'package:research_ai/screens/profile_screen.dart';
 import 'package:research_ai/providers/paper_store.dart';
 import 'package:research_ai/providers/note_store.dart';
+import 'package:provider/provider.dart';
+import 'package:research_ai/providers/notification_store.dart';
+import 'package:research_ai/models/session.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -19,8 +22,13 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   void initState() {
     super.initState();
-    PaperStore.instance.load();
-    NoteStore.instance.load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PaperStore.instance.load();
+      NoteStore.instance.load();
+      if (Session.userId != null) {
+        Provider.of<NotificationStore>(context, listen: false).startPolling(Session.userId!);
+      }
+    });
   }
   final _pages = const [
     DashboardScreen(),
@@ -41,9 +49,9 @@ class _MainScaffoldState extends State<MainScaffold> {
     return Scaffold(
       body: IndexedStack(index: _index, children: _pages),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: kSurface,
-          border: Border(top: BorderSide(color: kBorder)),
+        decoration: BoxDecoration(
+          color: context.kSurface,
+          border: Border(top: BorderSide(color: context.kBorder)),
         ),
         child: SafeArea(
           top: false,
@@ -60,7 +68,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(on ? item.active : item.icon,
-                            color: on ? kPrimary : kMuted, size: 25),
+                            color: on ? context.kPrimary : context.kMuted, size: 25),
                         const SizedBox(height: 4),
                         Text(
                           item.label,
@@ -68,7 +76,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                             fontSize: 11.5,
                             fontWeight:
                                 on ? FontWeight.w700 : FontWeight.w500,
-                            color: on ? kPrimary : kMuted,
+                            color: on ? context.kPrimary : context.kMuted,
                           ),
                         ),
                       ],

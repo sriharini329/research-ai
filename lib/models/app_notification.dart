@@ -1,35 +1,58 @@
 import 'package:flutter/material.dart';
 
 class AppNotification {
+  final int id;
+  final int? paperId;
   final String title;
   final String body;
   final IconData icon;
-  final String time;
-  AppNotification(
-      {required this.title,
-      required this.body,
-      required this.icon,
-      required this.time});
-}
+  final DateTime time;
+  final bool isRead;
 
-/// Sample notifications shown in the Notifications screen.
-final List<AppNotification> kSampleNotifications = [
-  AppNotification(
-    icon: Icons.check_circle_outline,
-    title: 'Paper processing complete',
-    body: 'Your uploaded paper has been analyzed and is ready to view.',
-    time: '2m ago',
-  ),
-  AppNotification(
-    icon: Icons.lightbulb_outline,
-    title: 'New citation suggestion',
-    body: 'We found new references relevant to your last question.',
-    time: '1h ago',
-  ),
-  AppNotification(
-    icon: Icons.auto_awesome_outlined,
-    title: 'Weekly research digest ready',
-    body: 'Your personalized summary of trending papers is available.',
-    time: 'Yesterday',
-  ),
-];
+  AppNotification({
+    required this.id,
+    this.paperId,
+    required this.title,
+    required this.body,
+    required this.icon,
+    required this.time,
+    required this.isRead,
+  });
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    IconData getIcon(String iconStr) {
+      switch (iconStr) {
+        case 'Icons.check_circle_outline':
+          return Icons.check_circle_outline;
+        case 'Icons.login':
+          return Icons.login;
+        case 'Icons.person_outline':
+          return Icons.person_outline;
+        case 'Icons.bookmark_border':
+          return Icons.bookmark_border;
+        case 'Icons.delete_outline':
+          return Icons.delete_outline;
+        case 'Icons.chat_bubble_outline':
+          return Icons.chat_bubble_outline;
+        case 'Icons.quickreply_outlined':
+          return Icons.quickreply_outlined;
+        case 'Icons.note_add_outlined':
+          return Icons.note_add_outlined;
+        case 'Icons.format_quote':
+          return Icons.format_quote;
+        default:
+          return Icons.notifications_none;
+      }
+    }
+
+    return AppNotification(
+      id: json['id'],
+      paperId: json['paper_id'],
+      title: json['title'] ?? '',
+      body: json['description'] ?? '',
+      icon: getIcon(json['icon'] ?? ''),
+      time: DateTime.parse(json['created_at']).toLocal(),
+      isRead: json['is_read'] ?? false,
+    );
+  }
+}

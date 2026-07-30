@@ -28,7 +28,7 @@ class _PaperFiltersScreenState extends State<PaperFiltersScreen> {
             min: 2000,
             max: 2025,
             divisions: 25,
-            activeColor: kPrimary,
+            activeColor: context.kPrimary,
             labels: RangeLabels('${_years.start.round()}',
                 '${_years.end.round()}'),
             onChanged: (v) => setState(() => _years = v),
@@ -37,9 +37,9 @@ class _PaperFiltersScreenState extends State<PaperFiltersScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('${_years.start.round()}',
-                  style: const TextStyle(color: kMuted)),
+                  style: TextStyle(color: context.kMuted)),
               Text('${_years.end.round()}',
-                  style: const TextStyle(color: kMuted)),
+                  style: TextStyle(color: context.kMuted)),
             ],
           ),
           const SectionTitle('Document Type'),
@@ -49,11 +49,11 @@ class _PaperFiltersScreenState extends State<PaperFiltersScreen> {
                 .map((t) => ChoiceChip(
                       label: Text(t),
                       selected: _type == t,
-                      selectedColor: kPrimary,
+                      selectedColor: context.kPrimary,
                       labelStyle: TextStyle(
-                          color: _type == t ? Colors.white : kInk,
+                          color: _type == t ? Colors.white : context.kInk,
                           fontWeight: FontWeight.w600),
-                      backgroundColor: kChipBg,
+                      backgroundColor: context.kChipBg,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20)),
                       onSelected: (_) => setState(() => _type = t),
@@ -64,9 +64,9 @@ class _PaperFiltersScreenState extends State<PaperFiltersScreen> {
           ..._sorts.map((s) => RadioListTile<String>(
                 value: s,
                 groupValue: _sort,
-                activeColor: kPrimary,
+                activeColor: context.kPrimary,
                 contentPadding: EdgeInsets.zero,
-                title: Text(s, style: const TextStyle(color: kInk)),
+                title: Text(s, style: TextStyle(color: context.kInk)),
                 onChanged: (v) => setState(() => _sort = v!),
               )),
           const SizedBox(height: 16),

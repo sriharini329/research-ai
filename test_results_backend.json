@@ -1,0 +1,35 @@
+{
+    "total": 7,
+    "passed": 7,
+    "failed": 0,
+    "details": [
+        {
+            "test": "test_01_signup_and_login",
+            "status": "PASSED"
+        },
+        {
+            "test": "test_02_invalid_login",
+            "status": "PASSED"
+        },
+        {
+            "test": "test_03_profile_update",
+            "status": "PASSED"
+        },
+        {
+            "test": "test_04_paper_upload_and_library",
+            "status": "PASSED"
+        },
+        {
+            "test": "test_05_dashboard_stats",
+            "status": "PASSED"
+        },
+        {
+            "test": "test_06_support",
+            "status": "PASSED"
+        },
+        {
+            "test": "test_07_notes_and_notifications",
+            "status": "PASSED"
+        }
+    ]
+}

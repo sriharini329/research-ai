@@ -19,7 +19,9 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    PaperStore.instance.load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PaperStore.instance.load();
+    });
   }
 
   @override
@@ -35,7 +37,7 @@ class _SearchScreenState extends State<SearchScreen> {
         title: const Text('Find Papers'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.tune_rounded, color: kInk),
+            icon: Icon(Icons.tune_rounded, color: context.kInk),
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const PaperFiltersScreen())),
           ),
@@ -50,9 +52,9 @@ class _SearchScreenState extends State<SearchScreen> {
               TextField(
                 controller: _ctrl,
                 onChanged: (v) => setState(() => _q = v),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Search papers, authors, topics…',
-                  prefixIcon: Icon(Icons.search_rounded, color: kMuted),
+                  prefixIcon: Icon(Icons.search_rounded, color: context.kMuted),
                 ),
               ),
               const SizedBox(height: 18),
@@ -62,8 +64,8 @@ class _SearchScreenState extends State<SearchScreen> {
                   builder: (context, _) {
                     final store = PaperStore.instance;
                     if (store.loading && store.all.isEmpty) {
-                      return const Center(
-                          child: CircularProgressIndicator(color: kPrimary));
+                      return Center(
+                          child: CircularProgressIndicator(color: context.kPrimary));
                     }
                     final results = store.search(_q);
                     if (results.isEmpty) {
@@ -72,7 +74,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             _q.isEmpty
                                 ? 'Search across your analyzed papers'
                                 : 'No matches for "$_q"',
-                            style: const TextStyle(color: kMuted)),
+                            style: TextStyle(color: context.kMuted)),
                       );
                     }
                     return ListView.separated(
@@ -95,7 +97,7 @@ class _SearchScreenState extends State<SearchScreen> {
             MaterialPageRoute(builder: (_) => PaperDetailScreen(paper: p))),
         child: Row(
           children: [
-            const Icon(Icons.article_outlined, color: kPrimary),
+            Icon(Icons.article_outlined, color: context.kPrimary),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -104,10 +106,10 @@ class _SearchScreenState extends State<SearchScreen> {
                   Text(p.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, color: kInk)),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700, color: context.kInk)),
                   Text(p.citationLine,
-                      style: const TextStyle(color: kMuted, fontSize: 12.5)),
+                      style: TextStyle(color: context.kMuted, fontSize: 12.5)),
                 ],
               ),
             ),

@@ -4,6 +4,7 @@ import 'package:research_ai/utils/url.dart';
 import 'package:research_ai/models/paper.dart';
 import 'package:research_ai/models/note.dart';
 import 'package:research_ai/models/chat_message.dart';
+import 'package:research_ai/models/app_notification.dart';
 
 /// Centralized HTTP layer for all backend calls (your api_service pattern).
 /// Throws [ApiException] with the server's message on failure.
@@ -55,9 +56,11 @@ class ApiService {
     return _decode(r);
   }
 
-  static Future<dynamic> _delete(String path) async {
+  static Future<dynamic> _delete(String path, {Map<String, dynamic>? body}) async {
     final r = await http
-        .delete(Uri.parse('${Url.base}$path'), headers: _headers)
+        .delete(Uri.parse('${Url.base}$path'), 
+                headers: _headers,
+                body: body != null ? jsonEncode(body) : null)
         .timeout(_timeout);
     return _decode(r);
   }
@@ -119,20 +122,16 @@ class ApiService {
   static Future<Paper> getPaperDetail(int paperId) async =>
       Paper.fromJson(await _get('/papers/detail/$paperId'));
 
-  /// Save a paper the app already summarized with Groq.
+  /// Sends the base64 encoded document to backend to parse and analyze.
   static Future<Paper> savePaper({
     required int userId,
     required String fileName,
-    required String title,
-    required String authors,
-    required String year,
-    required String content,
-    required String summary,
+    required String fileBytes,
   }) async {
     final res = await _post('/papers/analyze', {
       'user_id': userId,
       'file_name': fileName,
-      'content': content,
+      'file_bytes': fileBytes,
     });
     return Paper.fromJson(res['paper']);
   }
@@ -140,6 +139,11 @@ class ApiService {
   /// Cache the IEEE citations the app generated, so they load instantly later.
   static Future<void> saveCitations(int paperId, String citations) async =>
       _put('/papers/$paperId/citations', {'citations': citations});
+
+  static Future<String> getCitations(int paperId) async {
+    final res = await _get('/papers/$paperId/citations');
+    return res['citations'] as String;
+  }
 
   static Future<bool> toggleFavorite(int paperId) async =>
       (await _post('/papers/$paperId/favorite', {}))['is_favorite'] == true;
@@ -161,9 +165,28 @@ class ApiService {
       _post('/papers/$paperId/chat',
           {'user_id': userId, 'role': role, 'text': text});
 
+  static Future<String> ask(int paperId, int userId, String question) async {
+    final res = await _post('/papers/$paperId/ask', {
+      'user_id': userId,
+      'question': question,
+    });
+    return res['answer'] as String;
+  }
+
+  // ---- Citation Generation ----
+  static Future<String> cite(int paperId, String style) async {
+    final res = await _post('/papers/$paperId/cite', {'style': style});
+    return res['citation'] as String;
+  }
+
   // ---- Notes ----
   static Future<List<Note>> getNotes(int userId) async {
     final list = await _get('/notes/$userId') as List;
+    return list.map((e) => Note.fromJson(e)).toList();
+  }
+
+  static Future<List<Note>> getPaperNotes(int paperId) async {
+    final list = await _get('/papers/$paperId/notes') as List;
     return list.map((e) => Note.fromJson(e)).toList();
   }
 
@@ -182,7 +205,43 @@ class ApiService {
   static Future<void> deleteNote(int noteId) async =>
       _delete('/notes/$noteId');
 
+  // ---- Notifications ----
+  static Future<List<AppNotification>> getNotifications(int userId) async {
+    final list = await _get('/notifications/$userId') as List;
+    return list.map((e) => AppNotification.fromJson(e)).toList();
+  }
+
+  static Future<void> markAllAsRead(int userId) async =>
+      _post('/notifications/read_all', {'user_id': userId});
+
+  static Future<void> markAsRead(int notificationId) async =>
+      _post('/notifications/$notificationId/read', {});
+
+  static Future<void> clearAll(int userId) async =>
+      _delete('/notifications/clear_all', body: {'user_id': userId});
+
+  static Future<void> deleteNotification(int notificationId) async =>
+      _delete('/notifications/$notificationId');
+
   // ---- Dashboard ----
   static Future<Map<String, dynamic>> dashboard(int userId) async =>
       Map<String, dynamic>.from(await _get('/dashboard/$userId'));
+
+  // ---- Support ----
+  static Future<String> submitSupportRequest({
+    int? userId,
+    required String name,
+    required String email,
+    required String subject,
+    required String message,
+  }) async {
+    final res = await _post('/support', {
+      if (userId != null) 'user_id': userId,
+      'name': name,
+      'email': email,
+      'subject': subject,
+      'message': message,
+    });
+    return res['ticket_id'] as String;
+  }
 }

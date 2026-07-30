@@ -15,7 +15,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   @override
   void initState() {
     super.initState();
-    PaperStore.instance.load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PaperStore.instance.load();
+    });
   }
 
   @override
@@ -27,22 +29,22 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         builder: (context, _) {
           final store = PaperStore.instance;
           if (store.loading && store.all.isEmpty) {
-            return const Center(child: CircularProgressIndicator(color: kPrimary));
+            return Center(child: CircularProgressIndicator(color: context.kPrimary));
           }
           final favs = store.favorites;
           if (favs.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.favorite_border, size: 54, color: kMuted),
+                  Icon(Icons.favorite_border, size: 54, color: context.kMuted),
                   SizedBox(height: 12),
                   Text('No favorites yet',
                       style:
-                          TextStyle(fontWeight: FontWeight.w700, color: kInk)),
+                          TextStyle(fontWeight: FontWeight.w700, color: context.kInk)),
                   SizedBox(height: 4),
                   Text('Tap the heart on a paper to save it',
-                      style: TextStyle(color: kMuted, fontSize: 13)),
+                      style: TextStyle(color: context.kMuted, fontSize: 13)),
                 ],
               ),
             );
@@ -63,7 +65,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             MaterialPageRoute(builder: (_) => PaperDetailScreen(paper: p))),
         child: Row(
           children: [
-            const Icon(Icons.favorite, color: kPink),
+            Icon(Icons.favorite, color: context.kPink),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -72,12 +74,12 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   Text(p.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, color: kInk)),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700, color: context.kInk)),
                   Text(p.citationLine,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: kMuted, fontSize: 12.5)),
+                      style: TextStyle(color: context.kMuted, fontSize: 12.5)),
                 ],
               ),
             ),

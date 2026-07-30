@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:research_ai/utils/app_theme.dart';
 import 'package:research_ai/models/paper.dart';
 import 'package:research_ai/models/session.dart';
-import 'package:research_ai/services/paper_service.dart';
 import 'package:research_ai/services/api_service.dart';
 import 'package:research_ai/providers/paper_store.dart';
 import 'package:research_ai/widgets/app_widgets.dart';
@@ -10,17 +9,16 @@ import 'package:research_ai/screens/paper_detail_screen.dart';
 
 class ProcessingScreen extends StatefulWidget {
   final String fileName;
-  final String text;
+  final String fileBytes;
   const ProcessingScreen(
-      {super.key, required this.fileName, required this.text});
+      {super.key, required this.fileName, required this.fileBytes});
 
   @override
   State<ProcessingScreen> createState() => _ProcessingScreenState();
 }
 
 class _ProcessingScreenState extends State<ProcessingScreen> {
-  final _ai = PaperService();
-  final _steps = ['Extracting Text', 'Understanding Content', 'Generating Summary'];
+  final _steps = ['Uploading Document', 'Extracting Text (PyMuPDF)', 'Analyzing Content (Groq)'];
   int _done = 0;
   bool _complete = false;
   String? _error;
@@ -34,36 +32,26 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
 
   Future<void> _run() async {
     try {
+      // Simulate steps for UI feedback while backend processes
       setState(() => _done = 1);
-      // 1) metadata (Groq, in app)
-      final meta = await _ai.extractMeta(widget.text);
-      if (!mounted) return;
-      setState(() => _done = 2);
-      // 2) summary (Groq, in app)
-      final summary = await _ai.summarize(widget.text);
-      if (!mounted) return;
-      setState(() => _done = 3);
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted && !_complete) setState(() => _done = 2);
+      });
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted && !_complete) setState(() => _done = 3);
+      });
 
-      final title = widget.fileName.replaceAll(
-        RegExp(r'\.(pdf|docx|txt)$'),
-        '',
-      );
-
-      // 3) save to backend
+      // 3) save to backend (which now does all extraction and Groq)
       final paper = await ApiService.savePaper(
         userId: Session.userId!,
         fileName: widget.fileName,
-        title: title,
-        authors: meta['authors'] ?? '',
-        year: meta['year'] ?? '',
-        content: widget.text,
-        summary: summary,
+        fileBytes: widget.fileBytes,
       );
-      // keep content locally so detail/chat/cite have it without a refetch
-      paper.content = widget.text;
+
       if (!mounted) return;
       PaperStore.instance.cacheNew(paper);
       setState(() {
+        _done = 3;
         _complete = true;
         _paper = paper;
       });
@@ -92,18 +80,18 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const SizedBox(
+        SizedBox(
             height: 64,
             width: 64,
-            child: CircularProgressIndicator(color: kPrimary, strokeWidth: 4)),
+            child: CircularProgressIndicator(color: context.kPrimary, strokeWidth: 4)),
         const SizedBox(height: 28),
-        const Text('Processing Paper',
+        Text('Processing Paper',
             style: TextStyle(
-                fontSize: 20, fontWeight: FontWeight.w800, color: kInk)),
+                fontSize: 20, fontWeight: FontWeight.w800, color: context.kInk)),
         const SizedBox(height: 8),
-        const Text('AI is analyzing your paper and\nextracting key information.',
+        Text('AI is analyzing your paper and\nextracting key information.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: kMuted, height: 1.5)),
+            style: TextStyle(color: context.kMuted, height: 1.5)),
         const SizedBox(height: 36),
         ...List.generate(_steps.length, (i) {
           final done = i < _done;
@@ -113,18 +101,18 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
             child: Row(
               children: [
                 done
-                    ? const Icon(Icons.check_circle_rounded, color: kSuccess, size: 24)
+                    ? Icon(Icons.check_circle_rounded, color: context.kSuccess, size: 24)
                     : active
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 22,
                             width: 22,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2.4, color: kPrimary))
-                        : Icon(Icons.radio_button_unchecked, color: kBorder, size: 24),
+                                strokeWidth: 2.4, color: context.kPrimary))
+                        : Icon(Icons.radio_button_unchecked, color: context.kBorder, size: 24),
                 const SizedBox(width: 12),
                 Text(_steps[i],
                     style: TextStyle(
-                        color: done || active ? kInk : kMuted,
+                        color: done || active ? context.kInk : context.kMuted,
                         fontWeight: active ? FontWeight.w700 : FontWeight.w500)),
               ],
             ),
@@ -142,15 +130,15 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
           height: 96,
           width: 96,
           decoration: BoxDecoration(
-              color: kSuccess.withOpacity(0.12), shape: BoxShape.circle),
-          child: const Icon(Icons.check_rounded, color: kSuccess, size: 56),
+              color: context.kSuccess.withOpacity(0.12), shape: BoxShape.circle),
+          child: Icon(Icons.check_rounded, color: context.kSuccess, size: 56),
         ),
         const SizedBox(height: 24),
-        const Text('Processing Complete!',
-            style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: kInk)),
+        Text('Processing Complete!',
+            style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: context.kInk)),
         const SizedBox(height: 8),
-        const Text('Your paper has been analyzed successfully.',
-            textAlign: TextAlign.center, style: TextStyle(color: kMuted)),
+        Text('Your paper has been analyzed successfully.',
+            textAlign: TextAlign.center, style: TextStyle(color: context.kMuted)),
         const SizedBox(height: 36),
         PrimaryButton(
           label: 'View Paper',
@@ -162,8 +150,8 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
         const SizedBox(height: 12),
         TextButton(
           onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
-          child: const Text('Back to Home',
-              style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
+          child: Text('Back to Home',
+              style: TextStyle(color: context.kMuted, fontWeight: FontWeight.w600)),
         ),
       ],
     );
@@ -173,13 +161,13 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.error_outline_rounded, color: kError, size: 64),
+        Icon(Icons.error_outline_rounded, color: context.kError, size: 64),
         const SizedBox(height: 20),
-        const Text('Could not analyze the paper',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kInk)),
+        Text('Could not analyze the paper',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: context.kInk)),
         const SizedBox(height: 8),
         Text(_error ?? '',
-            textAlign: TextAlign.center, style: const TextStyle(color: kMuted)),
+            textAlign: TextAlign.center, style: TextStyle(color: context.kMuted)),
         const SizedBox(height: 28),
         PrimaryButton(
             label: 'Try Again',
@@ -193,8 +181,8 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
         const SizedBox(height: 12),
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel',
-              style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
+          child: Text('Cancel',
+              style: TextStyle(color: context.kMuted, fontWeight: FontWeight.w600)),
         ),
       ],
     );

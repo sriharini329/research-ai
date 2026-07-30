@@ -15,7 +15,9 @@ class _ReadingListScreenState extends State<ReadingListScreen> {
   @override
   void initState() {
     super.initState();
-    PaperStore.instance.load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PaperStore.instance.load();
+    });
   }
 
   @override
@@ -27,20 +29,20 @@ class _ReadingListScreenState extends State<ReadingListScreen> {
         builder: (context, _) {
           final store = PaperStore.instance;
           if (store.loading && store.all.isEmpty) {
-            return const Center(child: CircularProgressIndicator(color: kPrimary));
+            return Center(child: CircularProgressIndicator(color: context.kPrimary));
           }
           if (store.all.isEmpty) {
-            return const Center(
-                child: Text('No papers yet', style: TextStyle(color: kMuted)));
+            return Center(
+                child: Text('No papers yet', style: TextStyle(color: context.kMuted)));
           }
           return ListView(
             padding: kPad,
             children: [
-              _group('To Read', Icons.bookmark_border_rounded, kOrange,
+              _group('To Read', Icons.bookmark_border_rounded, context.kOrange,
                   store.byStatus(ReadingStatus.toRead)),
-              _group('Reading', Icons.menu_book_rounded, kBlue,
+              _group('Reading', Icons.menu_book_rounded, context.kBlue,
                   store.byStatus(ReadingStatus.reading)),
-              _group('Completed', Icons.check_circle_outline, kSuccess,
+              _group('Completed', Icons.check_circle_outline, context.kSuccess,
                   store.byStatus(ReadingStatus.completed)),
             ],
           );
@@ -60,8 +62,8 @@ class _ReadingListScreenState extends State<ReadingListScreen> {
               Icon(icon, color: c, size: 20),
               const SizedBox(width: 8),
               Text(title,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800, color: kInk, fontSize: 15)),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800, color: context.kInk, fontSize: 15)),
               const SizedBox(width: 6),
               Container(
                 padding:
@@ -77,10 +79,10 @@ class _ReadingListScreenState extends State<ReadingListScreen> {
           ),
         ),
         if (items.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(left: 4, bottom: 12),
             child: Text('Nothing here',
-                style: TextStyle(color: kMuted, fontSize: 13)),
+                style: TextStyle(color: context.kMuted, fontSize: 13)),
           )
         else
           ...items.map((p) => Padding(
@@ -92,14 +94,14 @@ class _ReadingListScreenState extends State<ReadingListScreen> {
                           builder: (_) => PaperDetailScreen(paper: p))),
                   child: Row(
                     children: [
-                      const Icon(Icons.article_outlined, color: kPrimary),
+                      Icon(Icons.article_outlined, color: context.kPrimary),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(p.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w700, color: kInk)),
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700, color: context.kInk)),
                       ),
                     ],
                   ),

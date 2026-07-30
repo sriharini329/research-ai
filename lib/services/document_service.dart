@@ -1,12 +1,11 @@
+import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
-import 'package:syncfusion_flutter_pdf/pdf.dart';
-import 'package:docx_to_text/docx_to_text.dart';
 
 class PickedPaper {
   final String fileName;
-  final String text;
+  final String fileBytes;
 
-  PickedPaper(this.fileName, this.text);
+  PickedPaper(this.fileName, this.fileBytes);
 }
 
 class DocumentService {
@@ -25,36 +24,9 @@ class DocumentService {
       throw Exception("Unable to read file.");
     }
 
-    final bytes = picked.bytes!;
-    final ext = (picked.extension ?? '').toLowerCase();
+    // Convert bytes to base64 string to send to backend
+    final base64String = base64Encode(picked.bytes!);
 
-    String text;
-
-    switch (ext) {
-      case 'pdf':
-        final document = PdfDocument(inputBytes: bytes);
-        final extractor = PdfTextExtractor(document);
-
-        text = extractor.extractText();
-        document.dispose();
-        break;
-
-      case 'docx':
-        text = docxToText(bytes);
-        break;
-
-      case 'txt':
-        text = String.fromCharCodes(bytes);
-        break;
-
-      default:
-        throw Exception("Unsupported file type");
-    }
-
-    if (text.trim().isEmpty) {
-      throw Exception("No text found in the selected file.");
-    }
-
-    return PickedPaper(picked.name, text);
+    return PickedPaper(picked.name, base64String);
   }
 }

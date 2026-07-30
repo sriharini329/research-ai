@@ -48,8 +48,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: TextButton(
                 onPressed: () =>
                     Navigator.pushReplacementNamed(context, '/signup'),
-                child: const Text('Skip',
-                    style: TextStyle(color: kMuted, fontWeight: FontWeight.w600)),
+                child: Text('Skip',
+                    style: TextStyle(color: context.kMuted, fontWeight: FontWeight.w600)),
               ),
             ),
             Expanded(
@@ -72,7 +72,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             borderRadius: BorderRadius.circular(44),
                             boxShadow: [
                               BoxShadow(
-                                  color: kPrimary.withOpacity(0.3),
+                                  color: context.kPrimary.withOpacity(0.3),
                                   blurRadius: 28,
                                   offset: const Offset(0, 14)),
                             ],
@@ -82,16 +82,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         const SizedBox(height: 48),
                         Text(p.title,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w800,
-                                color: kInk,
+                                color: context.kInk,
                                 height: 1.25)),
                         const SizedBox(height: 16),
                         Text(p.sub,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontSize: 15, color: kMuted, height: 1.5)),
+                            style: TextStyle(
+                                fontSize: 15, color: context.kMuted, height: 1.5)),
                       ],
                     ),
                   );
@@ -108,7 +108,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   height: 8,
                   width: _page == i ? 22 : 8,
                   decoration: BoxDecoration(
-                    color: _page == i ? kPrimary : kBorder,
+                    color: _page == i ? context.kPrimary : context.kBorder,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),

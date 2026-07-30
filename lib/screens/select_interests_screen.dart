@@ -45,14 +45,14 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 8),
-              const Text('Select Your Interests',
+              Text('Select Your Interests',
                   style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
-                      color: kInk)),
+                      color: context.kInk)),
               const SizedBox(height: 6),
-              const Text('Choose your research areas',
-                  style: TextStyle(color: kMuted)),
+              Text('Choose your research areas',
+                  style: TextStyle(color: context.kMuted)),
               const SizedBox(height: 28),
               Expanded(
                 child: SingleChildScrollView(
@@ -70,12 +70,12 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
                               horizontal: 18, vertical: 12),
                           decoration: BoxDecoration(
                             gradient: on ? kViolet : null,
-                            color: on ? null : kChipBg,
+                            color: on ? null : context.kChipBg,
                             borderRadius: BorderRadius.circular(30),
                           ),
                           child: Text(t,
                               style: TextStyle(
-                                  color: on ? Colors.white : kInk,
+                                  color: on ? Colors.white : context.kInk,
                                   fontWeight: FontWeight.w600)),
                         ),
                       );

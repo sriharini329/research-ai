@@ -29,7 +29,7 @@ class PrimaryButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(kRadius),
           boxShadow: [
             BoxShadow(
-                color: kPrimary.withOpacity(0.28),
+                color: context.kPrimary.withOpacity(0.28),
                 blurRadius: 14,
                 offset: const Offset(0, 7)),
           ],
@@ -80,8 +80,8 @@ class SecondaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       style: OutlinedButton.styleFrom(
-        foregroundColor: kPrimary,
-        side: const BorderSide(color: kPrimary),
+        foregroundColor: context.kPrimary,
+        side: BorderSide(color: context.kPrimary),
         minimumSize: const Size.fromHeight(50),
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(kRadius)),
@@ -122,7 +122,7 @@ class LabeledField extends StatelessWidget {
       maxLines: obscure ? 1 : maxLines,
       decoration: InputDecoration(
         hintText: hint,
-        prefixIcon: icon == null ? null : Icon(icon, color: kMuted, size: 20),
+        prefixIcon: icon == null ? null : Icon(icon, color: context.kMuted, size: 20),
         suffixIcon: suffix,
       ),
     );
@@ -146,9 +146,9 @@ class AppCard extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: kSurface,
+        color: context.kSurface,
         borderRadius: BorderRadius.circular(kRadius),
-        border: Border.all(color: kBorder),
+        border: Border.all(color: context.kBorder),
       ),
       child: child,
     );
@@ -165,8 +165,8 @@ class SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(4, 18, 4, 10),
         child: Text(text,
-            style: const TextStyle(
-                fontWeight: FontWeight.w800, color: kInk, fontSize: 15)),
+            style: TextStyle(
+                fontWeight: FontWeight.w800, color: context.kInk, fontSize: 15)),
       );
 }
 
@@ -188,11 +188,11 @@ class MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? kError : kPrimary;
+    final color = danger ? context.kError : context.kPrimary;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: kSurface,
+        color: context.kSurface,
         borderRadius: BorderRadius.circular(kRadius),
         child: InkWell(
           borderRadius: BorderRadius.circular(kRadius),
@@ -201,7 +201,7 @@ class MenuTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
             decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(kRadius),
-                border: Border.all(color: kBorder)),
+                border: Border.all(color: context.kBorder)),
             child: Row(
               children: [
                 Icon(icon, color: color, size: 21),
@@ -209,15 +209,15 @@ class MenuTile extends StatelessWidget {
                 Text(label,
                     style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: danger ? kError : kInk,
+                        color: danger ? context.kError : context.kInk,
                         fontSize: 15)),
                 const Spacer(),
                 if (trailingText != null)
                   Text(trailingText!,
-                      style: const TextStyle(color: kMuted, fontSize: 13)),
+                      style: TextStyle(color: context.kMuted, fontSize: 13)),
                 if (!danger) ...[
                   const SizedBox(width: 6),
-                  const Icon(Icons.chevron_right_rounded, color: kMuted),
+                  Icon(Icons.chevron_right_rounded, color: context.kMuted),
                 ],
               ],
             ),
@@ -250,30 +250,30 @@ class ToggleTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-          color: kSurface,
+          color: context.kSurface,
           borderRadius: BorderRadius.circular(kRadius),
-          border: Border.all(color: kBorder)),
+          border: Border.all(color: context.kBorder)),
       child: Row(
         children: [
-          Icon(icon, color: kPrimary, size: 21),
+          Icon(icon, color: context.kPrimary, size: 21),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, color: kInk)),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600, color: context.kInk)),
                 if (sub != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(sub!,
-                        style: const TextStyle(color: kMuted, fontSize: 12)),
+                        style: TextStyle(color: context.kMuted, fontSize: 12)),
                   ),
               ],
             ),
           ),
-          Switch(value: value, activeColor: kPrimary, onChanged: onChanged),
+          Switch(value: value, activeColor: context.kPrimary, onChanged: onChanged),
         ],
       ),
     );
@@ -283,7 +283,7 @@ class ToggleTile extends StatelessWidget {
 void showSnack(BuildContext context, String msg, {bool error = false}) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
     content: Text(msg),
-    backgroundColor: error ? kError : kInk,
+    backgroundColor: error ? context.kError : context.kInk,
     behavior: SnackBarBehavior.floating,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
   ));

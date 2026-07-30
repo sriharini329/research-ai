@@ -27,10 +27,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
           padding: kPad,
           children: [
             const SizedBox(height: 8),
-            const Center(
+            Center(
               child: Text("We'd love to hear your feedback!",
                   style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w700, color: kInk)),
+                      fontSize: 16, fontWeight: FontWeight.w700, color: context.kInk)),
             ),
             const SizedBox(height: 20),
             Row(
@@ -40,7 +40,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                 return IconButton(
                   iconSize: 38,
                   icon: Icon(filled ? Icons.star_rounded : Icons.star_outline_rounded,
-                      color: filled ? kOrange : kMuted),
+                      color: filled ? context.kOrange : context.kMuted),
                   onPressed: () => setState(() => _rating = i + 1),
                 );
               }),

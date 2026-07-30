@@ -1,0 +1,11 @@
+{
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "details": [
+        {
+            "test": "test_01_full_user_journey",
+            "status": "PASSED"
+        }
+    ]
+}

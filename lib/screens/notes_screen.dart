@@ -14,7 +14,9 @@ class _NotesScreenState extends State<NotesScreen> {
   @override
   void initState() {
     super.initState();
-    NoteStore.instance.load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NoteStore.instance.load();
+    });
   }
 
   @override
@@ -22,7 +24,7 @@ class _NotesScreenState extends State<NotesScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Notes & Highlights')),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: kPrimary,
+        backgroundColor: context.kPrimary,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Add Note',
             style:
@@ -37,22 +39,22 @@ class _NotesScreenState extends State<NotesScreen> {
         builder: (context, _) {
           final store = NoteStore.instance;
           if (store.loading && store.all.isEmpty) {
-            return const Center(child: CircularProgressIndicator(color: kPrimary));
+            return Center(child: CircularProgressIndicator(color: context.kPrimary));
           }
           final notes = store.all;
           if (notes.isEmpty) {
-            return const Center(
+            return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.sticky_note_2_outlined, size: 54, color: kMuted),
+                  Icon(Icons.sticky_note_2_outlined, size: 54, color: context.kMuted),
                   SizedBox(height: 12),
                   Text('No notes yet',
                       style:
-                          TextStyle(fontWeight: FontWeight.w700, color: kInk)),
+                          TextStyle(fontWeight: FontWeight.w700, color: context.kInk)),
                   SizedBox(height: 4),
                   Text('Tap Add Note to capture an idea',
-                      style: TextStyle(color: kMuted, fontSize: 13)),
+                      style: TextStyle(color: context.kMuted, fontSize: 13)),
                 ],
               ),
             );
@@ -84,17 +86,17 @@ class _NotesScreenState extends State<NotesScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(n.content,
-                    style: const TextStyle(color: kInk, height: 1.4)),
+                    style: TextStyle(color: context.kInk, height: 1.4)),
                 if (n.paperTitle.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text(n.paperTitle,
-                      style: const TextStyle(color: kMuted, fontSize: 12)),
+                      style: TextStyle(color: context.kMuted, fontSize: 12)),
                 ],
               ],
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.delete_outline, color: kMuted, size: 20),
+            icon: Icon(Icons.delete_outline, color: context.kMuted, size: 20),
             onPressed: () => NoteStore.instance.remove(n),
           ),
         ],
