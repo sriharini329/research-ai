@@ -34,14 +34,7 @@ exports.mochaHooks = {
   afterAll: async function () {
     this.timeout(120000);
     logger.info('═'.repeat(60));
-    logger.info('✅ All tests completed. Generating reports...');
-
-    try {
-      const reportPath = await excelReporter.generateReport();
-      logger.info(`📊 Excel Report: ${reportPath}`);
-    } catch (err) {
-      logger.error(`Excel report generation failed: ${err.message}`);
-    }
+    logger.info('✅ All tests completed.');
 
     const elapsed = ((Date.now() - suiteStartTime) / 1000).toFixed(1);
     logger.info(`⏱️  Total duration: ${elapsed}s`);

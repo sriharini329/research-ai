@@ -10,7 +10,7 @@
     "test:upload": "mocha tests/upload/**/*.test.js",
     "test:library": "mocha tests/library/**/*.test.js",
     "test:navigation": "mocha tests/navigation/**/*.test.js",
-    "test:all": "mocha \"tests/**/**/*.test.js\"",
+    "test:all": "mocha \"tests/**/*.test.js\"",
     "report:excel": "node reporters/generate-report.js",
     "setup": "npm install",
     "appium:start": "appium --use-plugins=execute-driver --allow-insecure chromedriver_autodownload",
