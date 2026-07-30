@@ -33,7 +33,7 @@ void main() {
   group('ResearchAI Flutter Widget Tests', () {
     testWidgets('Splash Screen renders successfully', (WidgetTester tester) async {
       await tester.pumpWidget(buildTestApp(const SplashScreen()));
-      await tester.pump();
+      await tester.pumpAndSettle(const Duration(seconds: 5));
       
       // Verify ResearchAI logo or text is displayed
       expect(find.byType(CircularProgressIndicator), findsNothing);

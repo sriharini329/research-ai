@@ -39,6 +39,19 @@ class DriverFactory {
       });
       this.driverType = preferredDriver;
       logger.info(`✅ ${preferredDriver.toUpperCase()} driver session created successfully`);
+
+      // Switch context to NATIVE_APP so that all standard XPath locators work flawlessly 
+      // without timing out and causing huge delays.
+      try {
+        const contexts = await this.driver.getContexts();
+        if (contexts.includes('NATIVE_APP')) {
+          await this.driver.switchContext('NATIVE_APP');
+          logger.info('✅ Switched Appium context to NATIVE_APP for XPath support');
+        }
+      } catch (e) {
+        logger.warn(`Could not switch to NATIVE_APP context: ${e.message}`);
+      }
+
       return this.driver;
     } catch (err) {
       if (preferredDriver === 'flutter') {
