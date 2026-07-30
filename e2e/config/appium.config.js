@@ -60,7 +60,7 @@ const uiAutomator2Capabilities = {
 const appiumServerConfig = {
   hostname: APPIUM_HOST,
   port: APPIUM_PORT,
-  path: '/wd/hub',
+  path: '/',
   connectionRetryTimeout: 180000,
   connectionRetryCount: 3,
   logLevel: process.env.APPIUM_LOG_LEVEL || 'info',
