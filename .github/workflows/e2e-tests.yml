@@ -112,16 +112,23 @@ jobs:
           name: Flutter-E2E-Report-Excel
           path: e2e/reports/Flutter_E2E_Report.xlsx
 
-      - name: Upload Mochawesome HTML Report
+      - name: Upload Mochawesome Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Mochawesome-Report
+          name: Mochawesome-Reports
           path: e2e/mochawesome-report/
 
-      - name: Upload Failure Logs and Screenshots
+      - name: Upload Screenshots and Failures
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Failure-Artifacts
+          name: Screenshots-Failures
           path: e2e/reports/failures/
+
+      - name: Upload Execution Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Execution-Logs
+          path: e2e/reports/logs/

@@ -13,8 +13,8 @@ module.exports = {
   // Reporter configuration
   reporter: 'mochawesome',
   reporterOptions: {
-    reportDir: 'reports',
-    reportFilename: 'index',
+    reportDir: 'mochawesome-report',
+    reportFilename: 'mochawesome',
     overwrite: true,
     html: true,
     json: true,
@@ -22,8 +22,7 @@ module.exports = {
     code: true,
     autoOpen: false,
     reportTitle: 'Research AI - Flutter E2E Test Report',
-    reportPageTitle: 'Research AI - Appium Test Results',
-    timestamp: 'ddmmyyyy_HHMMss',
+    reportPageTitle: 'Research AI - Appium Test Results'
   },
 
   // Global hooks file
