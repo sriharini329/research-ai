@@ -46,6 +46,9 @@ jobs:
           flutter pub get
           flutter build apk --debug
 
+      - name: Run Flutter Widget Tests
+        run: flutter test
+
       - name: Move APK for Appium
         run: |
           mkdir -p e2e/app
@@ -64,6 +67,22 @@ jobs:
             sleep 15
             npm run test:all
 
+      - name: Zero-Test Fail-Safe Check
+        if: always()
+        run: |
+          cd e2e
+          if [ -f "mochawesome-report/mochawesome.json" ]; then
+            TESTS_EXECUTED=$(node -e "const fs = require('fs'); const data = JSON.parse(fs.readFileSync('mochawesome-report/mochawesome.json')); console.log(data.stats.tests);")
+            echo "Tests executed: $TESTS_EXECUTED"
+            if [ "$TESTS_EXECUTED" -eq 0 ]; then
+              echo "❌ Zero tests executed! Failing the workflow."
+              exit 1
+            fi
+          else
+            echo "❌ Mochawesome report not found. Failing the workflow."
+            exit 1
+          fi
+
       - name: Upload Excel Report
         if: always()
         uses: actions/upload-artifact@v4
@@ -77,3 +96,10 @@ jobs:
         with:
           name: Mochawesome-Report
           path: e2e/mochawesome-report/
+
+      - name: Upload Failure Logs and Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Failure-Artifacts
+          path: e2e/reports/failures/
