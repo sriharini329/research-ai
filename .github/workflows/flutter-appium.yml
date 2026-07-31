@@ -56,8 +56,8 @@ jobs:
       - name: 🔧 Install Appium 2.x and Drivers
         run: |
           npm install -g appium@latest
-          appium driver install uiautomator2
-          appium driver install --source=npm appium-flutter-driver
+          appium driver install uiautomator2@2.45.1
+          appium driver install flutter@2.19.0
           appium plugin install execute-driver
           appium --version
           echo "Appium installation complete"
