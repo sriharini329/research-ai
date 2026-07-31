@@ -32,16 +32,17 @@ jobs:
       - name: Install Appium 3.x and Drivers
         run: |
           cd e2e
-          npm install -g appium@latest
-          appium driver install uiautomator2
-          appium driver install --source=npm appium-flutter-driver || true
-          appium plugin install execute-driver
+          npm install appium@latest
+          npx appium driver install uiautomator2
+          npx appium driver install --source=npm appium-flutter-driver || true
+          npx appium plugin install execute-driver
           
       - name: Verify Appium Installation
         run: |
-          appium --version
-          appium driver list --installed
-          appium plugin list
+          cd e2e
+          npx appium --version
+          npx appium driver list --installed
+          npx appium plugin list
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2

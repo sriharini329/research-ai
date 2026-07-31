@@ -85,20 +85,7 @@ jobs:
           TEST_EMAIL_SECRET:    ${{ secrets.TEST_EMAIL }}
           TEST_PASSWORD_SECRET: ${{ secrets.TEST_PASSWORD }}
 
-      # ─── Step 7: Start Appium Server ─────────────────────────────────────
-      - name: 🖥️ Start Appium Server
-        run: |
-          appium \
-            --port 4723 \
-            --log-level info \
-            --use-plugins execute-driver \
-            --allow-cors \
-            &
-          sleep 10
-          curl -s http://localhost:4723/status || echo "Appium status check failed"
-          echo "Appium server is running"
-
-      # ─── Step 8: Run Tests on Android Emulator ───────────────────────────
+      # ─── Step 7: Run Tests on Android Emulator ───────────────────────────
       - name: 📱 Run Tests in Android Emulator
         uses: ReactiveCircus/android-emulator-runner@v2
         with:
@@ -112,6 +99,11 @@ jobs:
             echo "Emulator booted!"
             adb devices -l
             if [ -f "e2e/app/app-release.apk" ]; then adb install -r e2e/app/app-release.apk; echo "✅ APK installed"; else echo "⚠️ APK not found at e2e/app/app-release.apk — tests will try to run anyway"; fi
+            
+            echo "Starting Appium Server..."
+            nohup appium --port 4723 --log-level info --use-plugins execute-driver --allow-cors > appium.log 2>&1 &
+            sleep 10
+            
             cd e2e && npm run ci:verify && npm run test:all 2>&1 | tee ../test-output.log
         env:
           TEST_EMAIL:       ${{ secrets.TEST_EMAIL }}
