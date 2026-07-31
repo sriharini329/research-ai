@@ -461,7 +461,7 @@
       "name": "research_ai",
       "rootUri": "../",
       "packageUri": "lib/",
-      "languageVersion": "3.11"
+      "languageVersion": "3.3"
     }
   ],
   "generator": "pub",
