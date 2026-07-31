@@ -34,7 +34,7 @@ jobs:
           cd e2e
           npm install -g appium@latest
           appium driver install uiautomator2
-          appium driver install flutter || true
+          appium driver install --source=npm appium-flutter-driver || true
           appium plugin install execute-driver
           
       - name: Verify Appium Installation
