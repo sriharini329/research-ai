@@ -21,7 +21,8 @@ class ExcelReporter {
   // ─── Auto-Load Data from Mochawesome and Winston ───────────────────────────
   _loadResultsFromMochawesome() {
     console.log('🔍 Scanning for Mochawesome JSON reports...');
-    const files = glob.sync(`${REPORTS_DIR}/*.json`).filter(f => !f.includes('package.json'));
+    const searchPath = path.join(__dirname, '..', 'mochawesome-report');
+    const files = glob.sync(`${searchPath}/*.json`);
     if (files.length === 0) {
       console.log('⚠️ No Mochawesome JSON reports found.');
       return;

@@ -53,13 +53,18 @@ jobs:
           echo "✅ E2E dependencies installed"
 
       # ─── Step 5: Install Appium 2.x ──────────────────────────────────────
-      - name: 🔧 Install Appium 2.x and Drivers
+      - name: 🔧 Install Appium 3.x and Drivers
         run: |
           npm install -g appium@latest
-          appium driver install uiautomator2@2.45.1
-          appium driver install flutter@2.19.0
+          appium driver install uiautomator2
+          appium driver install flutter
           appium plugin install execute-driver
+          
+      - name: 🔍 Verify Appium Installation
+        run: |
           appium --version
+          appium driver list --installed
+          appium plugin list
           echo "Appium installation complete"
 
       # ─── Step 6: Configure Test Environment ──────────────────────────────
