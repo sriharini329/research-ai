@@ -113,7 +113,6 @@ jobs:
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
-            set -o pipefail
             echo "Emulator booted!"
             adb devices -l
             if [ -f "e2e/app/app-release.apk" ]; then adb install -r e2e/app/app-release.apk; echo "✅ APK installed"; else echo "⚠️ APK not found at e2e/app/app-release.apk — tests will try to run anyway"; fi
@@ -122,7 +121,7 @@ jobs:
             nohup appium --port 4723 --log-level info --use-plugins execute-driver --allow-cors > appium.log 2>&1 &
             sleep 10
             
-            cd e2e && npm run ci:verify && npm run test:all 2>&1 | tee ../test-output.log
+            bash -c 'set -o pipefail; cd e2e && npm run ci:verify && npm run test:all 2>&1 | tee ../test-output.log'
         env:
           TEST_EMAIL:       ${{ secrets.TEST_EMAIL }}
           TEST_PASSWORD:    ${{ secrets.TEST_PASSWORD }}
