@@ -44,6 +44,21 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
+      # ─── Step 3.5: Setup Flutter and Build APK ────────────────────────────
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0' # Adjust if needed
+          channel: 'stable'
+
+      - name: 🏗️ Build Flutter APK
+        run: |
+          flutter pub get
+          flutter build apk --release
+          mkdir -p e2e/app
+          cp build/app/outputs/flutter-apk/app-release.apk e2e/app/app-release.apk
+          echo "✅ Flutter APK built and copied to e2e/app/app-release.apk"
+
       # ─── Step 4: Install E2E Dependencies (MUST be before any tests/reports)
       - name: 📦 Install E2E Node Dependencies
         working-directory: e2e
@@ -96,6 +111,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
+            set -o pipefail
             echo "Emulator booted!"
             adb devices -l
             if [ -f "e2e/app/app-release.apk" ]; then adb install -r e2e/app/app-release.apk; echo "✅ APK installed"; else echo "⚠️ APK not found at e2e/app/app-release.apk — tests will try to run anyway"; fi
