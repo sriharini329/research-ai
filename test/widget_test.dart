@@ -26,6 +26,12 @@ void main() {
         title: 'Research AI Tests',
         themeMode: ThemeMode.light,
         home: screen,
+        routes: {
+          '/onboarding': (context) => const Scaffold(body: Text('Onboarding')),
+          '/login': (context) => const Scaffold(body: Text('Login')),
+          '/main': (context) => const Scaffold(body: Text('Main')),
+          '/signup': (context) => const Scaffold(body: Text('Signup')),
+        },
       ),
     );
   }

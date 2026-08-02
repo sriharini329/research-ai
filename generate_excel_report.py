@@ -8,17 +8,33 @@ def parse_python_unittest(file_path, category):
     details = []
     if os.path.exists(file_path):
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                passed = data.get('passed', 0)
-                failed = data.get('failed', 0)
-                for item in data.get('details', []):
-                    details.append({
-                        'Category': category,
-                        'Test Name': item.get('test'),
-                        'Status': item.get('status'),
-                        'Error': item.get('error', '')
-                    })
+                
+                # Check if it's pytest-json-report format
+                if 'summary' in data and 'tests' in data:
+                    passed = data['summary'].get('passed', 0)
+                    failed = data['summary'].get('failed', 0) + data['summary'].get('error', 0)
+                    for item in data.get('tests', []):
+                        # pytest-json-report uses 'outcome' (passed, failed, skipped)
+                        status = str(item.get('outcome', '')).upper()
+                        details.append({
+                            'Category': category,
+                            'Test Name': item.get('nodeid', ''),
+                            'Status': status,
+                            'Error': str(item.get('call', {}).get('crash', {}).get('message', '')) if status == 'FAILED' else ''
+                        })
+                else:
+                    # Legacy custom format
+                    passed = data.get('passed', 0)
+                    failed = data.get('failed', 0)
+                    for item in data.get('details', []):
+                        details.append({
+                            'Category': category,
+                            'Test Name': item.get('test'),
+                            'Status': item.get('status'),
+                            'Error': item.get('error', '')
+                        })
         except Exception as e:
             print(f"Error reading {file_path}: {e}")
     return passed, failed, details
@@ -28,38 +44,46 @@ def parse_flutter_machine(file_path, category):
     details = []
     if os.path.exists(file_path):
         try:
-            with open(file_path, 'r', encoding='utf-16le') as f:
-                tests = {}
-                for line in f:
-                    if not line.strip(): continue
-                    try:
-                        events = json.loads(line)
-                        if isinstance(events, dict):
-                            events = [events]
-                        for event in events:
-                            if not isinstance(event, dict): continue
-                            if event.get('type') == 'testStart':
-                                t = event['test']
-                                if not t['name'].startswith('loading '):
-                                    tests[t['id']] = {'name': t['name'], 'status': 'RUNNING', 'error': ''}
-                            elif event.get('type') == 'testDone':
-                                tid = event['testID']
-                                if tid in tests:
-                                    res = event['result']
-                                    if res == 'success':
-                                        tests[tid]['status'] = 'PASSED'
-                                        passed += 1
-                                    elif res == 'skipped':
-                                        tests[tid]['status'] = 'SKIPPED'
-                                    else:
-                                        tests[tid]['status'] = 'FAILED'
-                                        failed += 1
-                            elif event.get('type') == 'error':
-                                tid = event['testID']
-                                if tid in tests:
-                                    tests[tid]['error'] += event['error']
-                    except json.JSONDecodeError:
-                        pass
+            # Try utf-8 first (GitHub actions default), fallback to utf-16le (Windows default redirection)
+            content = ""
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+            except UnicodeDecodeError:
+                with open(file_path, 'r', encoding='utf-16le') as f:
+                    content = f.read()
+                    
+            tests = {}
+            for line in content.splitlines():
+                if not line.strip(): continue
+                try:
+                    events = json.loads(line)
+                    if isinstance(events, dict):
+                        events = [events]
+                    for event in events:
+                        if not isinstance(event, dict): continue
+                        if event.get('type') == 'testStart':
+                            t = event['test']
+                            if not t['name'].startswith('loading '):
+                                tests[t['id']] = {'name': t['name'], 'status': 'RUNNING', 'error': ''}
+                        elif event.get('type') == 'testDone':
+                            tid = event['testID']
+                            if tid in tests:
+                                res = event['result']
+                                if res == 'success':
+                                    tests[tid]['status'] = 'PASSED'
+                                    passed += 1
+                                elif res == 'skipped':
+                                    tests[tid]['status'] = 'SKIPPED'
+                                else:
+                                    tests[tid]['status'] = 'FAILED'
+                                    failed += 1
+                        elif event.get('type') == 'error':
+                            tid = event['testID']
+                            if tid in tests:
+                                tests[tid]['error'] += event['error']
+                except json.JSONDecodeError:
+                    pass
                 for t in tests.values():
                     if t['status'] in ['PASSED', 'FAILED']:
                         details.append({
@@ -72,13 +96,44 @@ def parse_flutter_machine(file_path, category):
             print(f"Error reading {file_path}: {e}")
     return passed, failed, details
 
+def parse_mochawesome(file_path, category):
+    passed, failed = 0, 0
+    details = []
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                stats = data.get('stats', {})
+                passed = stats.get('passes', 0)
+                failed = stats.get('failures', 0)
+                for res in data.get('results', []):
+                    for suite in res.get('suites', []):
+                        for test in suite.get('tests', []):
+                            state = test.get('state', 'skipped').upper()
+                            if state == 'PASSED':
+                                status = 'PASSED'
+                            elif state == 'FAILED':
+                                status = 'FAILED'
+                            else:
+                                status = 'SKIPPED'
+                            details.append({
+                                'Category': category,
+                                'Test Name': test.get('title', ''),
+                                'Status': status,
+                                'Error': test.get('err', {}).get('message', '') if status == 'FAILED' else ''
+                            })
+        except Exception as e:
+            print(f"Error reading {file_path}: {e}")
+    return passed, failed, details
+
 def generate_report():
     print("Generating Multi-Tier Excel Report...")
     
     unit_p, unit_f, unit_d = parse_python_unittest('test_results_backend.json', 'Unit (Backend)')
     e2e_p, e2e_f, e2e_d = parse_python_unittest('test_results_real_backend.json', 'End-to-End (Backend)')
     widg_p, widg_f, widg_d = parse_flutter_machine('test_results_frontend.json', 'Widget (Frontend)')
-    integ_p, integ_f, integ_d = parse_flutter_machine('test_results_integration.json', 'Integration (Frontend)')
+    
+    integ_p, integ_f, integ_d = parse_mochawesome('e2e/mochawesome-report/mochawesome.json', 'Integration (Frontend)')
     
     all_details = unit_d + e2e_d + widg_d + integ_d
     total_passed = unit_p + e2e_p + widg_p + integ_p
