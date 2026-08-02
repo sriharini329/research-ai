@@ -3,102 +3,11 @@ import json
 from datetime import datetime
 import pandas as pd
 
-def parse_python_unittest(file_path, category):
-    passed, failed = 0, 0
+def parse_mochawesome(file_path):
+    passed, failed, skipped = 0, 0, 0
+    duration = 0
     details = []
-    if os.path.exists(file_path):
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                
-                # Check if it's pytest-json-report format
-                if 'summary' in data and 'tests' in data:
-                    passed = data['summary'].get('passed', 0)
-                    failed = data['summary'].get('failed', 0) + data['summary'].get('error', 0)
-                    for item in data.get('tests', []):
-                        # pytest-json-report uses 'outcome' (passed, failed, skipped)
-                        status = str(item.get('outcome', '')).upper()
-                        details.append({
-                            'Category': category,
-                            'Test Name': item.get('nodeid', ''),
-                            'Status': status,
-                            'Error': str(item.get('call', {}).get('crash', {}).get('message', '')) if status == 'FAILED' else ''
-                        })
-                else:
-                    # Legacy custom format
-                    passed = data.get('passed', 0)
-                    failed = data.get('failed', 0)
-                    for item in data.get('details', []):
-                        details.append({
-                            'Category': category,
-                            'Test Name': item.get('test'),
-                            'Status': item.get('status'),
-                            'Error': item.get('error', '')
-                        })
-        except Exception as e:
-            print(f"Error reading {file_path}: {e}")
-    return passed, failed, details
-
-def parse_flutter_machine(file_path, category):
-    passed, failed = 0, 0
-    details = []
-    if os.path.exists(file_path):
-        try:
-            # Try utf-8 first (GitHub actions default), fallback to utf-16le (Windows default redirection)
-            content = ""
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-            except UnicodeDecodeError:
-                with open(file_path, 'r', encoding='utf-16le') as f:
-                    content = f.read()
-                    
-            tests = {}
-            for line in content.splitlines():
-                if not line.strip(): continue
-                try:
-                    events = json.loads(line)
-                    if isinstance(events, dict):
-                        events = [events]
-                    for event in events:
-                        if not isinstance(event, dict): continue
-                        if event.get('type') == 'testStart':
-                            t = event['test']
-                            if not t['name'].startswith('loading '):
-                                tests[t['id']] = {'name': t['name'], 'status': 'RUNNING', 'error': ''}
-                        elif event.get('type') == 'testDone':
-                            tid = event['testID']
-                            if tid in tests:
-                                res = event['result']
-                                if res == 'success':
-                                    tests[tid]['status'] = 'PASSED'
-                                    passed += 1
-                                elif res == 'skipped':
-                                    tests[tid]['status'] = 'SKIPPED'
-                                else:
-                                    tests[tid]['status'] = 'FAILED'
-                                    failed += 1
-                        elif event.get('type') == 'error':
-                            tid = event['testID']
-                            if tid in tests:
-                                tests[tid]['error'] += event['error']
-                except json.JSONDecodeError:
-                    pass
-                for t in tests.values():
-                    if t['status'] in ['PASSED', 'FAILED']:
-                        details.append({
-                            'Category': category,
-                            'Test Name': t['name'],
-                            'Status': t['status'],
-                            'Error': t['error']
-                        })
-        except Exception as e:
-            print(f"Error reading {file_path}: {e}")
-    return passed, failed, details
-
-def parse_mochawesome(file_path, category):
-    passed, failed = 0, 0
-    details = []
+    
     if os.path.exists(file_path):
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -106,70 +15,189 @@ def parse_mochawesome(file_path, category):
                 stats = data.get('stats', {})
                 passed = stats.get('passes', 0)
                 failed = stats.get('failures', 0)
+                skipped = stats.get('pending', 0) + stats.get('skipped', 0)
+                duration = stats.get('duration', 0)
+                
                 for res in data.get('results', []):
                     for suite in res.get('suites', []):
+                        suite_title = suite.get('title', 'Unknown Module')
                         for test in suite.get('tests', []):
                             state = test.get('state', 'skipped').upper()
                             if state == 'PASSED':
-                                status = 'PASSED'
+                                status = 'Passed'
                             elif state == 'FAILED':
-                                status = 'FAILED'
+                                status = 'Failed'
                             else:
-                                status = 'SKIPPED'
+                                status = 'Skipped'
+                                
                             details.append({
-                                'Category': category,
                                 'Test Name': test.get('title', ''),
+                                'Module': suite_title,
                                 'Status': status,
-                                'Error': test.get('err', {}).get('message', '') if status == 'FAILED' else ''
+                                'Duration': f"{test.get('duration', 0)}ms",
+                                'Error': test.get('err', {}).get('message', '') if status == 'Failed' else ''
                             })
         except Exception as e:
             print(f"Error reading {file_path}: {e}")
-    return passed, failed, details
+            
+    return passed, failed, skipped, duration, details
 
 def generate_report():
-    print("Generating Multi-Tier Excel Report...")
+    print("Generating Multi-Tier Enterprise Excel Report...")
     
-    unit_p, unit_f, unit_d = parse_python_unittest('test_results_backend.json', 'Unit (Backend)')
-    e2e_p, e2e_f, e2e_d = parse_python_unittest('test_results_real_backend.json', 'End-to-End (Backend)')
-    widg_p, widg_f, widg_d = parse_flutter_machine('test_results_frontend.json', 'Widget (Frontend)')
+    # Parse Android Results
+    and_p, and_f, and_s, and_d, and_tests = parse_mochawesome('e2e/mochawesome-report/mochawesome-android.json')
+    # Parse Web Results
+    web_p, web_f, web_s, web_d, web_tests = parse_mochawesome('e2e/mochawesome-report/mochawesome-web.json')
     
-    integ_p, integ_f, integ_d = parse_mochawesome('e2e/mochawesome-report/mochawesome.json', 'Integration (Frontend)')
+    total_android = and_p + and_f + and_s
+    total_web = web_p + web_f + web_s
+    total_tests = total_android + total_web
+    total_passed = and_p + web_p
+    total_failed = and_f + web_f
+    total_skipped = and_s + web_s
+    total_duration = and_d + web_d
     
-    all_details = unit_d + e2e_d + widg_d + integ_d
-    total_passed = unit_p + e2e_p + widg_p + integ_p
-    total_failed = unit_f + e2e_f + widg_f + integ_f
-    total_tests = total_passed + total_failed
     pass_perc = (total_passed / total_tests * 100) if total_tests > 0 else 0
-
+    
+    # 1. Summary Sheet
     summary_data = {
-        'Metric': ['Execution Date', 'Device', 'Flutter Version', 'Backend Version', 'Database Version', 'Total Executed Tests', 'Passed', 'Failed', 'Pass Percentage'],
+        'Metric': [
+            'Execution Date',
+            'Device Name',
+            'Android Version',
+            'Browser',
+            'Total Android Tests',
+            'Total Web Tests',
+            'Total Executed Tests',
+            'Passed',
+            'Failed',
+            'Skipped',
+            'Pass Percentage',
+            'Total Duration'
+        ],
         'Value': [
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'Chrome (Real Runtime)',
-            '3.x',
-            'Flask 2.x',
-            'SQLite',
+            'Pixel 6 Emulator (Appium)',
+            'Android 13.0 (API 33)',
+            'Chrome Headless (WebdriverIO)',
+            total_android,
+            total_web,
             total_tests,
             total_passed,
             total_failed,
-            f"{pass_perc:.2f}%"
+            total_skipped,
+            f"{pass_perc:.2f}%",
+            f"{total_duration / 1000:.2f} seconds"
         ]
     }
     df_summary = pd.DataFrame(summary_data)
-    df_details = pd.DataFrame(all_details)
-    df_passed = pd.DataFrame([d for d in all_details if d['Status'] == 'PASSED'])
-    df_failed = pd.DataFrame([d for d in all_details if d['Status'] == 'FAILED'])
+    
+    # 2. Android Test Cases
+    android_rows = []
+    for i, t in enumerate(and_tests):
+        android_rows.append({
+            'Test ID': f"AND-{i+1:04d}",
+            'Module': t['Module'],
+            'Scenario': t['Test Name'],
+            'Status': t['Status'],
+            'Device': 'Pixel 6 Emulator',
+            'Duration': t['Duration']
+        })
+    df_android = pd.DataFrame(android_rows)
+    if df_android.empty:
+        df_android = pd.DataFrame(columns=['Test ID', 'Module', 'Scenario', 'Status', 'Device', 'Duration'])
+        
+    # 3. Web Test Cases
+    web_rows = []
+    for i, t in enumerate(web_tests):
+        web_rows.append({
+            'Test ID': f"WEB-{i+1:04d}",
+            'Module': t['Module'],
+            'Scenario': t['Test Name'],
+            'Browser': 'Chrome Headless',
+            'Status': t['Status'],
+            'Duration': t['Duration']
+        })
+    df_web = pd.DataFrame(web_rows)
+    if df_web.empty:
+        df_web = pd.DataFrame(columns=['Test ID', 'Module', 'Scenario', 'Browser', 'Status', 'Duration'])
+        
+    # 4. Passed Tests
+    passed_rows = []
+    for t in and_tests:
+        if t['Status'] == 'Passed':
+            passed_rows.append({'Test Name': t['Test Name'], 'Platform': 'Android', 'Execution Time': t['Duration']})
+    for t in web_tests:
+        if t['Status'] == 'Passed':
+            passed_rows.append({'Test Name': t['Test Name'], 'Platform': 'Web', 'Execution Time': t['Duration']})
+    df_passed = pd.DataFrame(passed_rows)
+    if df_passed.empty:
+        df_passed = pd.DataFrame(columns=['Test Name', 'Platform', 'Execution Time'])
+        
+    # 5. Failed Tests
+    failed_rows = []
+    for t in and_tests:
+        if t['Status'] == 'Failed':
+            failed_rows.append({'Test Name': t['Test Name'], 'Platform': 'Android', 'Failure Reason': t['Error'], 'Screenshot Path': 'N/A'})
+    for t in web_tests:
+        if t['Status'] == 'Failed':
+            failed_rows.append({'Test Name': t['Test Name'], 'Platform': 'Web', 'Failure Reason': t['Error'], 'Screenshot Path': 'N/A'})
+    df_failed = pd.DataFrame(failed_rows)
+    if df_failed.empty:
+        df_failed = pd.DataFrame(columns=['Test Name', 'Platform', 'Failure Reason', 'Screenshot Path'])
+
+    # 6. Execution Logs
+    log_rows = []
+    for t in and_tests + web_tests:
+        log_rows.append({
+            'Timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'Test Name': t['Test Name'],
+            'Step': 'Execute UI verification',
+            'Result': t['Status'],
+            'Remarks': t['Error'] if t['Error'] else 'OK'
+        })
+    df_logs = pd.DataFrame(log_rows)
+    if df_logs.empty:
+        df_logs = pd.DataFrame(columns=['Timestamp', 'Test Name', 'Step', 'Result', 'Remarks'])
 
     report_file = 'Flutter_E2E_Report.xlsx'
+    
     with pd.ExcelWriter(report_file, engine='xlsxwriter') as writer:
         df_summary.to_excel(writer, sheet_name='Summary', index=False)
-        df_details.to_excel(writer, sheet_name='All Test Cases', index=False)
-        if not df_passed.empty:
-            df_passed.to_excel(writer, sheet_name='Passed Tests', index=False)
-        if not df_failed.empty:
-            df_failed.to_excel(writer, sheet_name='Failed Tests', index=False)
-    
-    print(f"Report generated: {report_file}")
+        df_android.to_excel(writer, sheet_name='Android Test Cases', index=False)
+        df_web.to_excel(writer, sheet_name='Web Test Cases', index=False)
+        df_passed.to_excel(writer, sheet_name='Passed Tests', index=False)
+        df_failed.to_excel(writer, sheet_name='Failed Tests', index=False)
+        df_logs.to_excel(writer, sheet_name='Execution Logs', index=False)
+        
+        # Style adjustments
+        workbook = writer.book
+        header_format = workbook.add_format({
+            'bold': True,
+            'text_wrap': True,
+            'valign': 'top',
+            'fg_color': '#D7E4BC',
+            'border': 1
+        })
+        
+        for worksheet_name in writer.sheets:
+            worksheet = writer.sheets[worksheet_name]
+            # Write headers with styling
+            df = None
+            if worksheet_name == 'Summary': df = df_summary
+            elif worksheet_name == 'Android Test Cases': df = df_android
+            elif worksheet_name == 'Web Test Cases': df = df_web
+            elif worksheet_name == 'Passed Tests': df = df_passed
+            elif worksheet_name == 'Failed Tests': df = df_failed
+            elif worksheet_name == 'Execution Logs': df = df_logs
+            
+            if df is not None:
+                for col_num, value in enumerate(df.columns.values):
+                    worksheet.write(0, col_num, value, header_format)
+                    worksheet.set_column(col_num, col_num, 25) # Set column width
+                    
+    print(f"Enterprise Multi-Tier E2E Report generated: {report_file}")
 
 if __name__ == '__main__':
     generate_report()

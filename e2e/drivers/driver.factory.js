@@ -17,6 +17,27 @@ class DriverFactory {
 
   // ─── Create Driver Session ──────────────────────────────────────────────────
   async create(preferredDriver = 'flutter') {
+    if (preferredDriver === 'web') {
+      logger.info(`Creating Web session with Chrome`);
+      try {
+        this.driver = await remote({
+          logLevel: 'error',
+          capabilities: {
+            browserName: 'chrome',
+            'goog:chromeOptions': {
+              args: ['--headless', '--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage']
+            }
+          }
+        });
+        this.driverType = 'web';
+        logger.info(`✅ WEB driver session created successfully`);
+        return this.driver;
+      } catch (err) {
+        logger.error(`Failed to create Web session: ${err.message}`);
+        throw err;
+      }
+    }
+
     const connectedDevice = await DeviceUtils.getConnectedDevice();
     const caps = preferredDriver === 'flutter'
       ? { ...flutterCapabilities }
