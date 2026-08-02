@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: macos-13 # Using macOS 13 (Intel) for x86_64 hardware acceleration
+    runs-on: ubuntu-latest # Using ubuntu for fast queue times and native KVM hardware acceleration
     
     steps:
       - name: Checkout Code
@@ -21,7 +21,8 @@ jobs:
 
       - name: Install System Dependencies for PyMuPDF
         run: |
-          brew install mupdf swig freetype
+          sudo apt-get update
+          sudo apt-get install -y mupdf mupdf-tools swig libfreetype6-dev
 
       - name: Install Python Dependencies
         run: |
@@ -77,6 +78,12 @@ jobs:
           npm install -g appium
           appium driver install uiautomator2
           appium driver install --source=npm appium-flutter-driver
+
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
       - name: Run Appium Server
         run: |
