@@ -48,11 +48,12 @@ jobs:
       - name: 🐦 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0' # Adjust if needed
           channel: 'stable'
 
       - name: 🏗️ Build Flutter APK
         run: |
+          flutter --version
+          dart --version
           flutter pub get
           flutter build apk --release
           mkdir -p e2e/app
@@ -133,8 +134,10 @@ jobs:
       # ─── Step 9: Generate Excel Report ──────────────────────────────────
       - name: 📊 Generate Excel Report
         working-directory: e2e
-        if: always()
+        if: success()
         run: |
+          npm install
+          npm list exceljs
           echo "Running standalone report generator script..."
           npm run report:excel
 
