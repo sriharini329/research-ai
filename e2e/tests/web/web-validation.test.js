@@ -7,8 +7,7 @@ describe('Massive Data-Driven Web Validations', function () {
     before(async function () {
         // Use web driver
         driver = await driverFactory.create('web');
-        await driver.url('http://localhost:3000'); // Assuming web runs on localhost:3000, or we can just open a dummy page for validation
-        // Instead of relying on a hosted server which might fail in CI, we can load a data URI to simulate bounds
+        // Load a data URI to simulate bounds testing without relying on a hosted server
         await driver.url('data:text/html,<html><body><div id="app">Research AI Web Interface</div></body></html>');
     });
 

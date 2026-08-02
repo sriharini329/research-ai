@@ -8,8 +8,8 @@ require('dotenv').config();
  */
 
 const DEFAULT_APK_PATH = process.env.APK_PATH || './app/app-release.apk';
-const APP_PACKAGE    = process.env.APP_PACKAGE  || 'com.company.app';
-const APP_ACTIVITY   = process.env.APP_ACTIVITY  || 'com.company.app.MainActivity';
+const APP_PACKAGE    = process.env.APP_PACKAGE  || 'com.example.researchai.research_ai';
+const APP_ACTIVITY   = process.env.APP_ACTIVITY  || 'com.example.researchai.research_ai.MainActivity';
 const DEVICE_NAME    = process.env.DEVICE_NAME   || 'emulator-5554';
 const PLATFORM_VER   = process.env.PLATFORM_VERSION || '13.0';
 const APPIUM_HOST    = process.env.APPIUM_HOST   || '127.0.0.1';

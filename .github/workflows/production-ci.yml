@@ -99,12 +99,12 @@ jobs:
           profile: pixel_6
           script: |
             cd e2e
-            npx mocha --config .mocharc.android.js || true
+            npx mocha --config .mocharc.android.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-android,html=true,json=true || true
 
       - name: Run Web E2E Tests
         working-directory: ./e2e
         run: |
-          npx mocha --config .mocharc.web.js || true
+          npx mocha --config .mocharc.web.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-web,html=true,json=true || true
 
       - name: Generate Reports
         shell: bash

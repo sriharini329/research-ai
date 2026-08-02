@@ -6,8 +6,8 @@ describe('Massive Data-Driven Android Validations', function () {
     let pageSource;
 
     before(async function () {
-        // Use flutter driver for the actual device checks
-        driver = await driverFactory.create('flutter');
+        // Use uiautomator2 for the actual device checks on release APK
+        driver = await driverFactory.create('uiautomator2');
         await driverFactory.restartApp();
         pageSource = await driver.getPageSource();
     });

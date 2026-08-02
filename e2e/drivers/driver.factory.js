@@ -16,7 +16,7 @@ class DriverFactory {
   }
 
   // ─── Create Driver Session ──────────────────────────────────────────────────
-  async create(preferredDriver = 'flutter') {
+  async create(preferredDriver = 'uiautomator2') {
     if (preferredDriver === 'web') {
       logger.info(`Creating Web session with Chrome`);
       try {

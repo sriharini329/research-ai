@@ -55,13 +55,17 @@ exports.mochaHooks = {
         const safeName = test.title.replace(/[^a-zA-Z0-9]/g, '_');
         
         // 1. Screenshot
-        const screenshotPath = path.join(failuresDir, `${safeName}.png`);
-        await this.driver.saveScreenshot(screenshotPath).catch(() => logger.warn('Screenshot capture failed.'));
-        
-        // 2. Page Source (Flutter Widget Tree / XML)
-        const sourcePath = path.join(failuresDir, `${safeName}_source.xml`);
-        const source = await this.driver.getPageSource().catch(() => '');
-        if (source) fs.writeFileSync(sourcePath, source);
+        if (this.driver) {
+          const screenshotPath = path.join(failuresDir, `${safeName}.png`);
+          await this.driver.saveScreenshot(screenshotPath).catch(() => logger.warn('Screenshot capture failed.'));
+          
+          // 2. Page Source (Flutter Widget Tree / XML)
+          const sourcePath = path.join(failuresDir, `${safeName}_source.xml`);
+          const source = await this.driver.getPageSource().catch(() => '');
+          if (source) fs.writeFileSync(sourcePath, source);
+        } else {
+          logger.warn('this.driver is undefined, cannot capture screenshot.');
+        }
         
         // 3. Stack Trace
         const stackPath = path.join(failuresDir, `${safeName}_stacktrace.txt`);

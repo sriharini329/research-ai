@@ -2,7 +2,7 @@
 
 module.exports = {
   // Test file pattern
-  spec: 'tests/validation/massive-android.test.js',
+  spec: ['tests/validation/massive-android.test.js', 'tests/auth/**/*.test.js', 'tests/dashboard/**/*.test.js', 'tests/upload/**/*.test.js', 'tests/library/**/*.test.js', 'tests/navigation/**/*.test.js'],
 
   // Timeout per test (2 minutes for Flutter)
   timeout: 120000,
