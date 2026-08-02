@@ -1,0 +1,233 @@
+{
+  "total_count": 1,
+  "jobs": [
+    {
+      "id": 91485329515,
+      "run_id": 30743630184,
+      "workflow_name": "Production CI/CD Pipeline",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/sriharini329/research-ai/actions/runs/30743630184",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOTf69Rc8AAAAVTPNYaw",
+      "head_sha": "441769a7858b5c906baa7d748f046fa5ad70cc41",
+      "url": "https://api.github.com/repos/sriharini329/research-ai/actions/jobs/91485329515",
+      "html_url": "https://github.com/sriharini329/research-ai/actions/runs/30743630184/job/91485329515",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-08-02T10:22:50Z",
+      "started_at": "2026-08-02T10:22:52Z",
+      "completed_at": "2026-08-02T10:42:21Z",
+      "name": "build-and-test",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-08-02T10:22:53Z",
+          "completed_at": "2026-08-02T10:22:56Z"
+        },
+        {
+          "name": "Checkout Code",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-08-02T10:22:56Z",
+          "completed_at": "2026-08-02T10:22:58Z"
+        },
+        {
+          "name": "Setup Python",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-08-02T10:22:58Z",
+          "completed_at": "2026-08-02T10:22:58Z"
+        },
+        {
+          "name": "Install System Dependencies for PyMuPDF",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-08-02T10:22:58Z",
+          "completed_at": "2026-08-02T10:23:06Z"
+        },
+        {
+          "name": "Install Python Dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-08-02T10:23:06Z",
+          "completed_at": "2026-08-02T10:23:14Z"
+        },
+        {
+          "name": "Run Backend Tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-08-02T10:23:14Z",
+          "completed_at": "2026-08-02T10:23:15Z"
+        },
+        {
+          "name": "Setup Node.js",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-08-02T10:23:15Z",
+          "completed_at": "2026-08-02T10:23:20Z"
+        },
+        {
+          "name": "Setup Java",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-08-02T10:23:20Z",
+          "completed_at": "2026-08-02T10:23:24Z"
+        },
+        {
+          "name": "Setup Flutter",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-08-02T10:23:24Z",
+          "completed_at": "2026-08-02T10:24:24Z"
+        },
+        {
+          "name": "Verify Flutter & Dart Versions",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-08-02T10:24:24Z",
+          "completed_at": "2026-08-02T10:24:25Z"
+        },
+        {
+          "name": "Install Flutter Dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-08-02T10:24:25Z",
+          "completed_at": "2026-08-02T10:24:33Z"
+        },
+        {
+          "name": "Run Flutter Widget Tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-08-02T10:24:33Z",
+          "completed_at": "2026-08-02T10:24:44Z"
+        },
+        {
+          "name": "Build Android APK",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-08-02T10:24:44Z",
+          "completed_at": "2026-08-02T10:29:25Z"
+        },
+        {
+          "name": "Copy APK for Appium",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-08-02T10:29:25Z",
+          "completed_at": "2026-08-02T10:29:25Z"
+        },
+        {
+          "name": "Install E2E Node Dependencies",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-08-02T10:29:25Z",
+          "completed_at": "2026-08-02T10:30:13Z"
+        },
+        {
+          "name": "Run Appium Server",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-08-02T10:30:13Z",
+          "completed_at": "2026-08-02T10:30:18Z"
+        },
+        {
+          "name": "Run Android Emulator & E2E Tests",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 17,
+          "started_at": "2026-08-02T10:30:19Z",
+          "completed_at": "2026-08-02T10:42:15Z"
+        },
+        {
+          "name": "Generate Reports",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 18,
+          "started_at": "2026-08-02T10:42:15Z",
+          "completed_at": "2026-08-02T10:42:15Z"
+        },
+        {
+          "name": "Upload Artifacts",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 19,
+          "started_at": "2026-08-02T10:42:15Z",
+          "completed_at": "2026-08-02T10:42:15Z"
+        },
+        {
+          "name": "Post Setup Flutter",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 34,
+          "started_at": "2026-08-02T10:42:15Z",
+          "completed_at": "2026-08-02T10:42:15Z"
+        },
+        {
+          "name": "Post Setup Java",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 35,
+          "started_at": "2026-08-02T10:42:15Z",
+          "completed_at": "2026-08-02T10:42:15Z"
+        },
+        {
+          "name": "Post Setup Node.js",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 36,
+          "started_at": "2026-08-02T10:42:15Z",
+          "completed_at": "2026-08-02T10:42:15Z"
+        },
+        {
+          "name": "Post Setup Python",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 37,
+          "started_at": "2026-08-02T10:42:15Z",
+          "completed_at": "2026-08-02T10:42:15Z"
+        },
+        {
+          "name": "Post Checkout Code",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 38,
+          "started_at": "2026-08-02T10:42:15Z",
+          "completed_at": "2026-08-02T10:42:16Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 39,
+          "started_at": "2026-08-02T10:42:16Z",
+          "completed_at": "2026-08-02T10:42:17Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/sriharini329/research-ai/check-runs/91485329515",
+      "labels": [
+        "macos-latest"
+      ],
+      "runner_id": 1000000049,
+      "runner_name": "GitHub Actions 1000000049",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}

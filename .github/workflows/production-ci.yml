@@ -65,25 +65,28 @@ jobs:
       - name: Build Android APK
         run: flutter build apk --release
         
-      - name: Copy APK for Appium
-        run: |
-          mkdir -p e2e/app
-          cp build/app/outputs/flutter-apk/app-release.apk e2e/app/app-release.apk
 
-      - name: Install E2E Node Dependencies
-        working-directory: ./e2e
-        run: |
-          npm install
-          npm list exceljs
-          npm install -g appium
-          appium driver install uiautomator2
-          appium driver install --source=npm appium-flutter-driver
 
       - name: Enable KVM group perms
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+
+      - name: Install Selenium Node Dependencies
+        working-directory: ./selenium
+        run: |
+          npm install
+
+      - name: Install Appium Node Dependencies
+        working-directory: ./appium
+        run: |
+          npm install
+          npm install -g appium
+          appium driver install uiautomator2
+          appium driver install --source=npm appium-flutter-driver
+          mkdir -p app
+          cp ../build/app/outputs/flutter-apk/app-release.apk app/app-release.apk
 
       - name: Run Appium Server
         run: |
@@ -98,13 +101,13 @@ jobs:
           arch: x86_64
           profile: pixel_6
           script: |
-            cd e2e
-            npx mocha --config .mocharc.android.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-android,html=true,json=true || true
+            cd appium
+            npx mocha --config .mocharc.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-android,html=true,json=true || true
 
       - name: Run Web E2E Tests
-        working-directory: ./e2e
+        working-directory: ./selenium
         run: |
-          npx mocha --config .mocharc.web.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-web,html=true,json=true || true
+          npx mocha --config .mocharc.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-web,html=true,json=true || true
 
       - name: Generate Reports
         shell: bash
@@ -123,4 +126,5 @@ jobs:
             Flutter_E2E_Report.xlsx
             backend_report.json
             test_results_frontend.json
-            e2e/mochawesome-report/
+            appium/mochawesome-report/
+            selenium/mochawesome-report/

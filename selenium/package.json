@@ -1,0 +1,52 @@
+{
+  "name": "research-ai-e2e",
+  "version": "1.0.0",
+  "description": "Production-ready E2E Appium 2.x automation framework for Research AI Flutter Android app",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha",
+    "test:auth": "mocha tests/auth/**/*.test.js",
+    "test:dashboard": "mocha tests/dashboard/**/*.test.js",
+    "test:upload": "mocha tests/upload/**/*.test.js",
+    "test:library": "mocha tests/library/**/*.test.js",
+    "test:navigation": "mocha tests/navigation/**/*.test.js",
+    "test:all": "mocha \"tests/**/*.test.js\"",
+    "report:excel": "node reporters/generate-report.js",
+    "setup": "npm install",
+    "appium:start": "appium --use-plugins=execute-driver --allow-insecure chromedriver_autodownload",
+    "device:list": "adb devices -l",
+    "ci:verify": "node -e \"['exceljs','winston','mocha','chai','fs-extra','moment','webdriverio'].forEach(m=>{try{require(m);console.log('OK',m)}catch(e){console.error('MISSING',m);process.exit(1)}})\"",
+    "lint": "node --check config/appium.config.js"
+  },
+  "dependencies": {
+    "webdriverio": "^8.39.1",
+    "appium-flutter-finder": "^0.2.0",
+    "exceljs": "^4.4.0",
+    "winston": "^3.13.1",
+    "winston-daily-rotate-file": "^5.0.0",
+    "dotenv": "^16.4.5",
+    "fs-extra": "^11.2.0",
+    "moment": "^2.30.1",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "mocha": "^10.7.3",
+    "chai": "^4.4.1",
+    "mochawesome": "^7.1.3",
+    "mochawesome-merge": "^4.3.0",
+    "mochawesome-report-generator": "^6.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "appium",
+    "flutter",
+    "e2e",
+    "automation",
+    "android",
+    "mocha"
+  ],
+  "author": "QA Automation Team",
+  "license": "MIT"
+}

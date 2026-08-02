@@ -45,10 +45,15 @@ def parse_mochawesome(file_path):
 def generate_report():
     print("Generating Multi-Tier Enterprise Excel Report...")
     
+    # File Paths
+    ANDROID_REPORT_PATH = "appium/mochawesome-report/mochawesome-android.json"
+    WEB_REPORT_PATH = "selenium/mochawesome-report/mochawesome-web.json"
+    OUTPUT_EXCEL = "Flutter_E2E_Report.xlsx"
+    
     # Parse Android Results
-    and_p, and_f, and_s, and_d, and_tests = parse_mochawesome('e2e/mochawesome-report/mochawesome-android.json')
+    and_p, and_f, and_s, and_d, and_tests = parse_mochawesome(ANDROID_REPORT_PATH)
     # Parse Web Results
-    web_p, web_f, web_s, web_d, web_tests = parse_mochawesome('e2e/mochawesome-report/mochawesome-web.json')
+    web_p, web_f, web_s, web_d, web_tests = parse_mochawesome(WEB_REPORT_PATH)
     
     total_android = and_p + and_f + and_s
     total_web = web_p + web_f + web_s
