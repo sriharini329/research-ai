@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: macos-latest # Using macOS for iOS/Android flexibility
+    runs-on: macos-13 # Using macOS 13 (Intel) for x86_64 hardware acceleration
     
     steps:
       - name: Checkout Code
