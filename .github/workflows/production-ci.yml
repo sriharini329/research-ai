@@ -156,21 +156,15 @@ jobs:
             echo "2. Installing APK manually via ADB..."
             adb install -r appium/app/app-release.apk || exit 1
 
-            echo "3. Extracting Package and Activity..."
-            AAPT_PATH=$(find ${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools -type f -name aapt 2>/dev/null | sort -r | head -n 1)
-            [ -z "$AAPT_PATH" ] && echo "aapt not found in SDK, falling back to apt-get..." && sudo apt-get update -y && sudo apt-get install -y aapt && AAPT_PATH=$(which aapt)
-            [ -z "$AAPT_PATH" ] && echo "Error: aapt tool could not be found or installed" && exit 1
-            echo "Using AAPT_PATH: $AAPT_PATH"
-            
-            $AAPT_PATH dump badging appium/app/app-release.apk > apk_metadata.txt
-            APP_PACKAGE=$(grep "package:" apk_metadata.txt | awk -F"'" '{print $2}' | head -n 1)
-            APP_ACTIVITY=$(grep "launchable-activity:" apk_metadata.txt | awk -F"'" '{print $2}' | head -n 1)
+            echo "3. Extracting Package and Activity from Source Configuration..."
+            APP_PACKAGE=$(grep -Eo 'applicationId\s*=\s*"[^"]+"' android/app/build.gradle.kts | awk -F'"' '{print $2}')
+            APP_ACTIVITY=$(grep -Eo 'android:name="\.[^"]+"' android/app/src/main/AndroidManifest.xml | head -n 1 | awk -F'"' '{print $2}' | sed 's/^\.//')
             
             echo "Detected Package: '$APP_PACKAGE'"
             echo "Detected Activity: '$APP_ACTIVITY'"
             
-            [ -z "$APP_PACKAGE" ] && echo "Error: Failed to extract APP_PACKAGE" && cat apk_metadata.txt && exit 1
-            [ -z "$APP_ACTIVITY" ] && echo "Error: Failed to extract APP_ACTIVITY" && cat apk_metadata.txt && exit 1
+            [ -z "$APP_PACKAGE" ] && echo "Error: Failed to extract APP_PACKAGE from build.gradle.kts" && exit 1
+            [ -z "$APP_ACTIVITY" ] && echo "Error: Failed to extract APP_ACTIVITY from AndroidManifest.xml" && exit 1
 
             echo "4. Launching Application manually via ADB..."
             adb shell am start -n $APP_PACKAGE/$APP_ACTIVITY || exit 1
