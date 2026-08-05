@@ -1,13 +1,14 @@
 'use strict';
 
 require('dotenv').config();
+const path = require('path');
 
 /**
  * Appium 2.x Capabilities & Server Configuration
  * Research AI Flutter Android App
  */
 
-const DEFAULT_APK_PATH = process.env.APK_PATH || './app/app-release.apk';
+const DEFAULT_APK_PATH = process.env.APK_PATH || path.resolve(__dirname, '../app/app-release.apk');
 const APP_PACKAGE    = process.env.APP_PACKAGE  || 'com.example.researchai.research_ai';
 const APP_ACTIVITY   = process.env.APP_ACTIVITY  || 'com.example.researchai.research_ai.MainActivity';
 const DEVICE_NAME    = process.env.DEVICE_NAME   || 'emulator-5554';
