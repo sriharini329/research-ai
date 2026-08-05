@@ -46,6 +46,7 @@ def parse_mochawesome(file_path, module_prefix, type_label):
                     desc = title
                     module_name = type_label
                     test_type = type_label
+                    platform = "Web" if module_prefix == "WEB" else "Android"
                     
                     if " | " in title:
                         parts = [p.strip() for p in title.split(" | ")]
@@ -57,6 +58,8 @@ def parse_mochawesome(file_path, module_prefix, type_label):
                                 feature = p.replace("Feature:", "").strip()
                             elif p.startswith("Type:"):
                                 test_type = p.replace("Type:", "").strip()
+                            elif p.startswith("Platform:"):
+                                platform = p.replace("Platform:", "").strip()
                             else:
                                 desc = p
                     else:
@@ -81,6 +84,7 @@ def parse_mochawesome(file_path, module_prefix, type_label):
                     
                     tests.append({
                         'ID': tc_id,
+                        'Platform': platform,
                         'Module': module_name,
                         'Feature': feature,
                         'Description': desc,
@@ -120,7 +124,7 @@ def generate_excel(tests, total_tests, passed, failed, pass_rate, output_path):
     )
     
     # Header A1
-    ws.merge_cells('A1:L1')
+    ws.merge_cells('A1:M1')
     ws['A1'] = 'End-to-End Test Automation Execution Report'
     ws['A1'].font = title_font
     ws['A1'].fill = title_fill
@@ -142,7 +146,7 @@ def generate_excel(tests, total_tests, passed, failed, pass_rate, output_path):
     
     # Column Headers
     headers = [
-        'Test Case ID', 'Module', 'Feature', 'Test Description', 'Test Type', 
+        'Test Case ID', 'Platform', 'Module', 'Feature', 'Test Description', 'Test Type', 
         'Expected Result', 'Actual Result', 'Status', 'Execution Time', 
         'Error Details', 'Screenshot Path', 'Execution Date'
     ]
@@ -157,8 +161,8 @@ def generate_excel(tests, total_tests, passed, failed, pass_rate, output_path):
         
     # Column Widths
     col_widths = {
-        'A': 16.0, 'B': 14.0, 'C': 29.0, 'D': 40.0, 'E': 14.0, 'F': 40.0, 
-        'G': 13.0, 'H': 12.0, 'I': 18.0, 'J': 17.0, 'K': 19.0, 'L': 28.0
+        'A': 16.0, 'B': 12.0, 'C': 14.0, 'D': 29.0, 'E': 40.0, 'F': 14.0, 'G': 40.0, 
+        'H': 13.0, 'I': 12.0, 'J': 18.0, 'K': 17.0, 'L': 19.0, 'M': 28.0
     }
     for col, width in col_widths.items():
         ws.column_dimensions[col].width = width
@@ -167,7 +171,7 @@ def generate_excel(tests, total_tests, passed, failed, pass_rate, output_path):
     row_idx = 8
     for test in tests:
         row_data = [
-            test['ID'], test['Module'], test['Feature'], test['Description'], test['Type'],
+            test['ID'], test['Platform'], test['Module'], test['Feature'], test['Description'], test['Type'],
             test['Expected'], test['Actual'], test['Status'], test['Duration'],
             test['Error'], test['Screenshot'], test['Date']
         ]
@@ -175,7 +179,7 @@ def generate_excel(tests, total_tests, passed, failed, pass_rate, output_path):
             cell = ws.cell(row=row_idx, column=col_idx)
             cell.value = val
             cell.border = border
-            if col_idx == 8: # Status color
+            if col_idx == 9: # Status color
                 if val == 'Pass':
                     cell.font = Font(color="FF10B981")
                 elif val == 'Fail':

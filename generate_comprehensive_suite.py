@@ -159,22 +159,24 @@ def generate_test_cases():
             """)
         
         for sc_type, desc, logic in appium_scenarios:
-            title = f"TC_APP_{tc_id:03d} | Module: {module} | Feature: {feature} | Type: {sc_type} | {desc}"
+            title = f"E2E_TC_{tc_id:03d} | Platform: Android | Module: {module} | Feature: {feature} | Type: {sc_type} | {desc}"
             appium_tests.append(f"""
     it('{title}', async function () {{
         this.timeout(10000);
         {logic}
     }});
 """)
+            tc_id += 1
+            
         for sc_type, desc, logic in web_scenarios:
-            title = f"TC_WEB_{tc_id:03d} | Module: {module} | Feature: {feature} | Type: {sc_type} | {desc}"
+            title = f"E2E_TC_{tc_id:03d} | Platform: Web | Module: {module} | Feature: {feature} | Type: {sc_type} | {desc}"
             selenium_tests.append(f"""
     it('{title}', async function () {{
         this.timeout(10000);
         {logic}
     }});
 """)
-        tc_id += 1
+            tc_id += 1
             
     # For Web, inject all strings into the mock DOM so they actually exist if queried
     web_html = "<html><body><div id='app'>" + " ".join([f"<p>{s}</p>" for s in set(all_strings)]) + "</div></body></html>"
