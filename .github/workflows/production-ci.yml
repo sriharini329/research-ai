@@ -149,8 +149,29 @@ jobs:
           arch: x86_64
           profile: pixel_6
           script: |
+            echo "1. Verifying APK exists..."
+            ls -la appium/app/app-release.apk || exit 1
+
+            echo "2. Installing APK manually via ADB..."
+            adb install -r appium/app/app-release.apk || exit 1
+
+            echo "3. Extracting Package and Activity..."
+            AAPT_PATH=$(find $ANDROID_HOME/build-tools -name aapt | head -n 1)
+            APP_PACKAGE=$($AAPT_PATH dump badging appium/app/app-release.apk | grep package: | awk '{print $2}' | sed s/name=//g | sed s/\'//g)
+            APP_ACTIVITY=$($AAPT_PATH dump badging appium/app/app-release.apk | grep launchable-activity: | awk '{print $2}' | sed s/name=//g | sed s/\'//g)
+            echo "Detected Package: $APP_PACKAGE"
+            echo "Detected Activity: $APP_ACTIVITY"
+
+            echo "4. Launching Application manually via ADB..."
+            adb shell am start -n $APP_PACKAGE/$APP_ACTIVITY || exit 1
+            sleep 3
+
+            echo "5. Starting Appium server and waiting for it to be fully ready..."
             appium --log-level error:error &
-            sleep 5
+            sleep 10
+            curl -s http://127.0.0.1:4723/status || exit 1
+
+            echo "6. Executing Android E2E Tests..."
             cd appium && npx mocha --config .mocharc.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-android,html=true,json=true || true
 
       - name: Upload Artifact
