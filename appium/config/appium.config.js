@@ -23,8 +23,6 @@ const flutterCapabilities = {
   'appium:deviceName': DEVICE_NAME,
   'appium:platformVersion': PLATFORM_VER,
   'appium:app': DEFAULT_APK_PATH,
-  'appium:appPackage': APP_PACKAGE,
-  'appium:appActivity': APP_ACTIVITY,
   'appium:noReset': false,
   'appium:fullReset': false,
   'appium:autoGrantPermissions': true,
@@ -34,6 +32,7 @@ const flutterCapabilities = {
   'appium:skipUnlock': true,
   'appium:disableWindowAnimation': true,
   'flutter:waitForIdleTimeout': 20000,
+  'appium:appWaitActivity': '*',
 };
 
 // ─── UiAutomator2 Fallback Capabilities ──────────────────────────────────────
@@ -43,8 +42,6 @@ const uiAutomator2Capabilities = {
   'appium:deviceName': DEVICE_NAME,
   'appium:platformVersion': PLATFORM_VER,
   'appium:app': DEFAULT_APK_PATH,
-  'appium:appPackage': APP_PACKAGE,
-  'appium:appActivity': APP_ACTIVITY,
   'appium:noReset': false,
   'appium:fullReset': false,
   'appium:autoGrantPermissions': true,
@@ -55,6 +52,7 @@ const uiAutomator2Capabilities = {
   'appium:disableWindowAnimation': true,
   'appium:uiautomator2ServerInstallTimeout': 60000,
   'appium:ensureWebviewsHavePages': true,
+  'appium:appWaitActivity': '*',
 };
 
 // ─── Appium Server Config ─────────────────────────────────────────────────────
@@ -62,9 +60,9 @@ const appiumServerConfig = {
   hostname: APPIUM_HOST,
   port: APPIUM_PORT,
   path: '/',
-  connectionRetryTimeout: 10000,
+  connectionRetryTimeout: 180000, // Sufficiently high to allow POST /session to build UIA2
   connectionRetryCount: 0,
-  waitforTimeout: 1000,
+  waitforTimeout: 1000,           // Fail-fast for element queries
   logLevel: process.env.APPIUM_LOG_LEVEL || 'info',
 };
 
