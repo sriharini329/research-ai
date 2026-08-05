@@ -170,9 +170,15 @@ jobs:
             cd appium && npx mocha --config .mocharc.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-android,html=true,json=true || true
             cd ..
 
-            echo "6. Shutting down Appium server..."
-            kill $APPIUM_PID || true
-
+            echo "6. Aggressively shutting down all background processes..."
+            kill -9 $APPIUM_PID || true
+            pkill -9 -f appium || true
+            pkill -9 -f node || true
+            pkill -9 -f logcat || true
+            pkill -9 -f adb || true
+            pkill -9 -f qemu || true
+            pkill -9 -f emulator || true
+            sleep 2
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
