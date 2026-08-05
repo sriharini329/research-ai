@@ -40,35 +40,51 @@ def parse_mochawesome(file_path, module_prefix, type_label):
                     else:
                         status = "Skip"
 
-                    # Parse TC_WEB_001 - [Feature] Description format
+                    # Parse enterprise piped title format
                     tc_id = f"TC-{module_prefix}-{idx:02d}"
                     feature = "General"
                     desc = title
+                    module_name = type_label
+                    test_type = type_label
                     
-                    if " - " in title:
-                        parts = title.split(" - ", 1)
-                        if parts[0].startswith("TC_"):
-                            tc_id = parts[0]
-                            desc = parts[1]
-                            
-                    if desc.startswith("[") and "]" in desc:
-                        f_end = desc.find("]")
-                        feature = desc[1:f_end].strip()
-                        desc = desc[f_end+1:].strip()
+                    if " | " in title:
+                        parts = [p.strip() for p in title.split(" | ")]
+                        tc_id = parts[0]
+                        for p in parts[1:]:
+                            if p.startswith("Module:"):
+                                module_name = p.replace("Module:", "").strip()
+                            elif p.startswith("Feature:"):
+                                feature = p.replace("Feature:", "").strip()
+                            elif p.startswith("Type:"):
+                                test_type = p.replace("Type:", "").strip()
+                            else:
+                                desc = p
+                    else:
+                        # Fallback for old format
+                        if " - " in title:
+                            parts = title.split(" - ", 1)
+                            if parts[0].startswith("TC_"):
+                                tc_id = parts[0]
+                                desc = parts[1]
+                                
+                        if desc.startswith("[") and "]" in desc:
+                            f_end = desc.find("]")
+                            feature = desc[1:f_end].strip()
+                            desc = desc[f_end+1:].strip()
 
                     err = test.get('err', {})
                     err_details = err.get('message', '') if err else ''
                     screenshot_path = ""
                     if status == "Fail":
                         safe_name = title.replace(' ', '_').replace('/', '_')
-                        screenshot_path = f"selenium/screenshots/fail_{safe_name}.png"
+                        screenshot_path = f"{'selenium' if module_prefix == 'WEB' else 'appium'}/screenshots/fail_{safe_name}.png"
                     
                     tests.append({
                         'ID': tc_id,
-                        'Module': type_label,
+                        'Module': module_name,
                         'Feature': feature,
                         'Description': desc,
-                        'Type': type_label,
+                        'Type': test_type,
                         'Expected': 'Test should execute and complete successfully.',
                         'Actual': 'Completed successfully without any assertions failing.' if status == 'Pass' else err_details,
                         'Status': status,
