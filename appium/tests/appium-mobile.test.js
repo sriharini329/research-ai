@@ -18,6 +18,14 @@ describe('Enterprise Appium E2E Automation Suite (720 Tests)', function () {
         if (driver) { await driver.deleteSession(); }
     });
 
+    beforeEach(function () {
+        console.log(`\n===== START TEST: ${this.currentTest.title} =====`);
+        this.timeout(30000);
+    });
+
+    afterEach(function () {
+        console.log(`===== END TEST: ${this.currentTest.title} =====\n`);
+    });
 
     it('E2E_TC_001 | Platform: Android | Module: Support | Feature: About Application | Type: Smoke | Verify About Application core components are structurally sound and load successfully', async function () {
         this.timeout(10000);

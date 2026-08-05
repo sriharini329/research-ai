@@ -1,7 +1,6 @@
 module.exports = {
   spec: 'tests/appium-mobile.test.js',
-  timeout: 120000,
+  timeout: 30000,
   reporter: 'mochawesome',
   exit: true,
-  bail: true,
 };

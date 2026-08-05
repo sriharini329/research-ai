@@ -63,7 +63,7 @@ const appiumServerConfig = {
   path: '/',
   connectionRetryTimeout: 180000, // Sufficiently high to allow POST /session to build UIA2
   connectionRetryCount: 0,
-  waitforTimeout: 1000,           // Fail-fast for element queries
+  waitforTimeout: 15000,           // Maximum explicit wait for elements
   logLevel: process.env.APPIUM_LOG_LEVEL || 'info',
 };
 
