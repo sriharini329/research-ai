@@ -116,15 +116,12 @@ jobs:
           pip install pandas openpyxl xlsxwriter
           python -c "import pandas, openpyxl, xlsxwriter; print('Python report dependencies installed successfully')"
           echo "Generating multi-tier enterprise report..."
-          python generate_excel_report.py
+          python generate_e2e_report.py
           
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Test-Reports
           path: |
-            Flutter_E2E_Report.xlsx
-            backend_report.json
+            E2E-Automation-Reports.zip
             test_results_frontend.json
-            appium/mochawesome-report/
-            selenium/mochawesome-report/
