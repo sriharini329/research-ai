@@ -151,8 +151,7 @@ jobs:
           script: |
             appium &
             sleep 5
-            cd appium
-            npx mocha --config .mocharc.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-android,html=true,json=true || true
+            cd appium && npx mocha --config .mocharc.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-android,html=true,json=true || true
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
