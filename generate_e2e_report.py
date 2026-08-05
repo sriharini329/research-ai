@@ -1,12 +1,10 @@
-import json
 import os
-import shutil
+import json
 import zipfile
+from datetime import datetime
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from datetime import datetime
 
-# File Paths
 ANDROID_REPORT_PATH = "appium/mochawesome-report/mochawesome-android.json"
 WEB_REPORT_PATH = "selenium/mochawesome-report/mochawesome-web.json"
 OUTPUT_DIR = "E2E-Automation-Reports"
@@ -16,9 +14,11 @@ def parse_mochawesome(file_path, module_prefix, type_label):
     tests = []
     total_passed = 0
     total_failed = 0
+    total_skipped = 0
+    total_duration = 0
     
     if not os.path.exists(file_path):
-        return total_passed, total_failed, tests
+        return total_passed, total_failed, total_skipped, total_duration, tests
 
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -39,6 +39,10 @@ def parse_mochawesome(file_path, module_prefix, type_label):
                         total_failed += 1
                     else:
                         status = "Skip"
+                        total_skipped += 1
+
+                    duration = test.get('duration', 0)
+                    total_duration += duration
 
                     # Parse enterprise piped title format
                     tc_id = f"TC-{module_prefix}-{idx:02d}"
@@ -92,7 +96,7 @@ def parse_mochawesome(file_path, module_prefix, type_label):
                         'Expected': 'Test should execute and complete successfully.',
                         'Actual': 'Completed successfully without any assertions failing.' if status == 'Pass' else err_details,
                         'Status': status,
-                        'Duration': f"{test.get('duration', 0)} ms",
+                        'Duration': f"{duration} ms",
                         'Error': err_details,
                         'Screenshot': screenshot_path,
                         'Date': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.000Z')
@@ -101,9 +105,9 @@ def parse_mochawesome(file_path, module_prefix, type_label):
     except Exception as e:
         print(f"Error parsing {file_path}: {e}")
 
-    return total_passed, total_failed, tests
+    return total_passed, total_failed, total_skipped, total_duration, tests
 
-def generate_excel(tests, total_tests, passed, failed, pass_rate, output_path):
+def generate_excel(tests, total_tests, total_web, total_android, passed, failed, skipped, pass_rate, duration, output_path):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "E2E Test Report"
@@ -134,17 +138,36 @@ def generate_excel(tests, total_tests, passed, failed, pass_rate, output_path):
     ws['A3'] = 'Execution Summary'
     ws['A3'].font = Font(bold=True)
     
-    ws['A4'] = 'Total Tests'
+    ws['A4'] = 'Total Executed Tests'
     ws['B4'] = total_tests
-    ws['D4'] = 'Failed'
-    ws['E4'] = failed
+    ws['D4'] = 'Browser'
+    ws['E4'] = 'Chrome Headless'
     
-    ws['A5'] = 'Passed'
-    ws['B5'] = passed
-    ws['D5'] = 'Pass Rate'
-    ws['E5'] = pass_rate
+    ws['A5'] = 'Total Web Tests'
+    ws['B5'] = total_web
+    ws['D5'] = 'Device'
+    ws['E5'] = 'Pixel 6 Emulator'
     
-    # Column Headers
+    ws['A6'] = 'Total Android Tests'
+    ws['B6'] = total_android
+    ws['D6'] = 'Android Version'
+    ws['E6'] = '13.0 (API 33)'
+    
+    ws['A7'] = 'Passed'
+    ws['B7'] = passed
+    ws['D7'] = 'Duration'
+    ws['E7'] = duration
+    
+    ws['A8'] = 'Failed'
+    ws['B8'] = failed
+    
+    ws['A9'] = 'Skipped'
+    ws['B9'] = skipped
+    
+    ws['A10'] = 'Pass Percentage'
+    ws['B10'] = pass_rate
+    
+    # Column Headers at Row 12
     headers = [
         'Test Case ID', 'Platform', 'Module', 'Feature', 'Test Description', 'Test Type', 
         'Expected Result', 'Actual Result', 'Status', 'Execution Time', 
@@ -152,7 +175,7 @@ def generate_excel(tests, total_tests, passed, failed, pass_rate, output_path):
     ]
     
     for col_idx, header in enumerate(headers, 1):
-        cell = ws.cell(row=7, column=col_idx)
+        cell = ws.cell(row=12, column=col_idx)
         cell.value = header
         cell.font = header_font
         cell.fill = header_fill
@@ -168,7 +191,7 @@ def generate_excel(tests, total_tests, passed, failed, pass_rate, output_path):
         ws.column_dimensions[col].width = width
         
     # Data Rows
-    row_idx = 8
+    row_idx = 13
     for test in tests:
         row_data = [
             test['ID'], test['Platform'], test['Module'], test['Feature'], test['Description'], test['Type'],
@@ -183,171 +206,65 @@ def generate_excel(tests, total_tests, passed, failed, pass_rate, output_path):
                 if val == 'Pass':
                     cell.font = Font(color="FF10B981")
                 elif val == 'Fail':
-                    cell.font = Font(color="FFF43F5E")
+                    cell.font = Font(color="FFEF4444")
+                else:
+                    cell.font = Font(color="FFF59E0B")
         row_idx += 1
         
     wb.save(output_path)
 
-def generate_html(tests, total_tests, passed, failed, pass_rate, output_path):
-    html_template = f"""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Test Automation Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {{
-      --bg-dark: #0f172a;
-      --bg-card: #1e293b;
-      --border: #334155;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --green: #10b981;
-      --red: #f43f5e;
-      --blue: #3b82f6;
-    }}
-    
-    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{ font-family: 'Inter', sans-serif; background-color: var(--bg-dark); color: var(--text-main); padding: 2rem; min-height: 100vh; }}
-    .header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }}
-    .header h1 {{ font-size: 1.75rem; font-weight: 700; background: linear-gradient(to right, #10b981, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
-    .meta-info {{ text-align: right; color: var(--text-muted); font-size: 0.875rem; }}
-    .stats-container {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }}
-    .stat-card {{ background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }}
-    .stat-label {{ font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }}
-    .stat-value {{ font-size: 2.25rem; font-weight: 700; }}
-    .stat-card.passed .stat-value {{ color: var(--green); }}
-    .stat-card.failed .stat-value {{ color: var(--red); }}
-    .stat-card.rate .stat-value {{ background: linear-gradient(to right, var(--green), #6ee7b7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
-    .filter-bar {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }}
-    .filter-buttons {{ display: flex; gap: 0.75rem; }}
-    .filter-btn {{ background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 1rem; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 0.875rem; }}
-    .filter-btn.active {{ background-color: var(--blue); border-color: var(--blue); }}
-    .search-input {{ background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.875rem; width: 280px; outline: none; }}
-    .table-container {{ background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }}
-    table {{ width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem; }}
-    th {{ background-color: #0f172a; color: var(--text-muted); font-weight: 600; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }}
-    td {{ padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); vertical-align: middle; }}
-    .test-row {{ cursor: pointer; transition: background-color 0.15s; }}
-    .test-row:hover {{ background-color: #334155; }}
-    .description-cell {{ display: flex; flex-direction: column; gap: 0.25rem; }}
-    .type-badge {{ font-size: 0.75rem; color: var(--text-muted); background-color: #0f172a; padding: 0.1rem 0.4rem; border-radius: 4px; align-self: flex-start; }}
-    .status-badge {{ display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }}
-    .status-pass {{ background-color: rgba(16, 185, 129, 0.15); color: var(--green); }}
-    .status-fail {{ background-color: rgba(244, 63, 94, 0.15); color: var(--red); }}
-    .time-cell {{ color: var(--text-muted); font-size: 0.875rem; }}
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div>
-      <h1>Yoga App Test Automation Dashboard</h1>
-      <p style="color: var(--text-muted); margin-top: 0.25rem;">Automated Selenium E2E Diagnostics</p>
-    </div>
-    <div class="meta-info">
-      <div>Execution Date: <strong>{datetime.utcnow().strftime('%m/%d/%Y, %I:%M:%S %p')}</strong></div>
-    </div>
-  </div>
-
-  <div class="stats-container">
-    <div class="stat-card">
-      <div class="stat-label">Total Tests</div>
-      <div class="stat-value">{total_tests}</div>
-    </div>
-    <div class="stat-card passed">
-      <div class="stat-label">Passed</div>
-      <div class="stat-value">{passed}</div>
-    </div>
-    <div class="stat-card failed">
-      <div class="stat-label">Failed</div>
-      <div class="stat-value">{failed}</div>
-    </div>
-    <div class="stat-card rate">
-      <div class="stat-label">Pass Rate</div>
-      <div class="stat-value">{pass_rate}</div>
-    </div>
-  </div>
-
-  <div class="table-container">
-    <table id="test-table">
-      <thead>
-        <tr>
-          <th style="width: 120px;">ID</th>
-          <th style="width: 140px;">Module</th>
-          <th style="width: 160px;">Feature</th>
-          <th>Description</th>
-          <th style="width: 120px;">Status</th>
-          <th style="width: 120px;">Duration</th>
-        </tr>
-      </thead>
-      <tbody>
-"""
-    for idx, test in enumerate(tests):
-        status_class = "pass" if test['Status'] == 'Pass' else "fail"
-        html_template += f"""
-      <tr class="test-row {status_class}">
-        <td>{test['ID']}</td>
-        <td>{test['Module']}</td>
-        <td>{test['Feature']}</td>
-        <td class="description-cell">
-          <strong>{test['Description']}</strong>
-          <span class="type-badge">{test['Type']}</span>
-        </td>
-        <td><span class="status-badge status-{status_class}">{test['Status']}</span></td>
-        <td class="time-cell">{test['Duration']}</td>
-      </tr>
-"""
-    html_template += """
-      </tbody>
-    </table>
-  </div>
-</body>
-</html>
-"""
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(html_template)
+def generate_html(tests, output_path):
+    # Minimal HTML report
+    html_content = f"""
+    <html>
+    <head><title>E2E Summary</title></head>
+    <body>
+        <h1>E2E Summary</h1>
+        <p>Total Tests: {len(tests)}</p>
+    </body>
+    </html>
+    """
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
 
 def main():
-    print("Generating Multi-Tier Enterprise E2E Report...")
+    print("Generating E2E Reports...")
     
-    and_p, and_f, and_tests = parse_mochawesome(ANDROID_REPORT_PATH, "E2E", "Appium")
-    web_p, web_f, web_tests = parse_mochawesome(WEB_REPORT_PATH, "WEB", "Selenium")
-    
-    all_tests = and_tests + web_tests
-    total_tests = len(all_tests)
-    passed = and_p + web_p
-    failed = and_f + web_f
-    pass_rate = f"{(passed / total_tests * 100):.1f}%" if total_tests > 0 else "0.0%"
-    
-    if os.path.exists(OUTPUT_DIR):
-        shutil.rmtree(OUTPUT_DIR)
-        
     os.makedirs(f"{OUTPUT_DIR}/reports", exist_ok=True)
-    os.makedirs(f"{OUTPUT_DIR}/selenium/reports", exist_ok=True)
-    os.makedirs(f"{OUTPUT_DIR}/selenium/screenshots", exist_ok=True)
     
-    # Generate for root reports folder
-    generate_excel(all_tests, total_tests, passed, failed, pass_rate, f"{OUTPUT_DIR}/reports/E2E_Test_Report.xlsx")
-    generate_html(all_tests, total_tests, passed, failed, pass_rate, f"{OUTPUT_DIR}/reports/Test_Summary.html")
+    passed1, failed1, skipped1, duration1, tests1 = parse_mochawesome(WEB_REPORT_PATH, 'WEB', 'Selenium')
+    passed2, failed2, skipped2, duration2, tests2 = parse_mochawesome(ANDROID_REPORT_PATH, 'APP', 'Appium')
     
-    # Generate for selenium/reports folder (to match structure exactly)
-    generate_excel(all_tests, total_tests, passed, failed, pass_rate, f"{OUTPUT_DIR}/selenium/reports/E2E_Test_Report.xlsx")
-    generate_html(all_tests, total_tests, passed, failed, pass_rate, f"{OUTPUT_DIR}/selenium/reports/Test_Summary.html")
+    all_tests = tests1 + tests2
+    total_web = len(tests1)
+    total_android = len(tests2)
+    total_tests = len(all_tests)
     
-    # Create zip
+    total_passed = passed1 + passed2
+    total_failed = failed1 + failed2
+    total_skipped = skipped1 + skipped2
+    total_duration_ms = duration1 + duration2
+    
+    # Calculate formatted duration (seconds or minutes)
+    duration_s = total_duration_ms // 1000
+    formatted_duration = f"{duration_s // 60}m {duration_s % 60}s"
+    
+    pass_rate = f"{(total_passed / total_tests * 100):.1f}%" if total_tests > 0 else "0.0%"
+    
+    # Generate unified Excel
+    generate_excel(all_tests, total_tests, total_web, total_android, total_passed, total_failed, total_skipped, pass_rate, formatted_duration, f"{OUTPUT_DIR}/reports/E2E_Test_Report.xlsx")
+    
+    # Generate unified HTML
+    generate_html(all_tests, f"{OUTPUT_DIR}/reports/Test_Summary.html")
+    
+    # Zip artifacts
     with zipfile.ZipFile(ZIP_NAME, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, dirs, files in os.walk(OUTPUT_DIR):
-            for directory in dirs:
-                dir_path = os.path.join(root, directory)
-                arcname = os.path.relpath(dir_path, OUTPUT_DIR) + '/'
-                zipf.writestr(arcname, '')
             for file in files:
-                file_path = os.path.join(root, file)
-                arcname = os.path.relpath(file_path, OUTPUT_DIR)
-                zipf.write(file_path, arcname)
-                
-    print(f"Successfully generated {ZIP_NAME} with identical layout and {total_tests} results.")
+                zipf.write(os.path.join(root, file), 
+                           os.path.relpath(os.path.join(root, file), os.path.join(OUTPUT_DIR, '..')))
+                           
+    print(f"Created {ZIP_NAME} with unified Web and Android execution results.")
 
 if __name__ == "__main__":
     main()

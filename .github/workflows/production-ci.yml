@@ -88,11 +88,6 @@ jobs:
           mkdir -p app
           cp ../build/app/outputs/flutter-apk/app-release.apk app/app-release.apk
 
-      - name: Run Appium Server
-        run: |
-          appium &
-        shell: bash
-
       - name: Run Android Emulator & E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -101,6 +96,8 @@ jobs:
           arch: x86_64
           profile: pixel_6
           script: |
+            appium &
+            sleep 5
             cd appium
             npx mocha --config .mocharc.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-android,html=true,json=true || true
 
