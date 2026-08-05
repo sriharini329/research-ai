@@ -42,6 +42,8 @@ const uiAutomator2Capabilities = {
   'appium:deviceName': DEVICE_NAME,
   'appium:platformVersion': PLATFORM_VER,
   'appium:app': DEFAULT_APK_PATH,
+  'appium:appPackage': APP_PACKAGE,
+  'appium:appActivity': APP_ACTIVITY,
   'appium:noReset': false,
   'appium:fullReset': false,
   'appium:autoGrantPermissions': true,
@@ -52,7 +54,6 @@ const uiAutomator2Capabilities = {
   'appium:disableWindowAnimation': true,
   'appium:uiautomator2ServerInstallTimeout': 60000,
   'appium:ensureWebviewsHavePages': true,
-  'appium:appWaitActivity': '*',
 };
 
 // ─── Appium Server Config ─────────────────────────────────────────────────────
