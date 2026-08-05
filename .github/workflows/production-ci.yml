@@ -7,9 +7,8 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest # Using ubuntu for fast queue times and native KVM hardware acceleration
-    
+  backend-tests:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -33,6 +32,76 @@ jobs:
         run: |
           pytest --json-report --json-report-file=backend_report.json || true
           
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-report
+          path: backend_report.json
+
+  flutter-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'any'
+          channel: 'stable'
+          
+      - name: Install Flutter Dependencies
+        run: flutter pub get
+
+      - name: Run Flutter Widget Tests
+        run: |
+          flutter test --machine > test_results_frontend.json || true
+          
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-report
+          path: test_results_frontend.json
+
+  web-e2e-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Selenium Node Dependencies
+        working-directory: ./selenium
+        run: |
+          npm install
+
+      - name: Run Web E2E Tests
+        working-directory: ./selenium
+        run: |
+          npx mocha --config .mocharc.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-web,html=true,json=true || true
+          
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-report
+          path: selenium/mochawesome-report/mochawesome-web.json
+
+  android-e2e-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -50,33 +119,17 @@ jobs:
           flutter-version: 'any'
           channel: 'stable'
           
-      - name: Verify Flutter & Dart Versions
-        run: |
-          flutter --version
-          dart --version
-
       - name: Install Flutter Dependencies
         run: flutter pub get
-
-      - name: Run Flutter Widget Tests
-        run: |
-          flutter test --machine > test_results_frontend.json || true
 
       - name: Build Android APK
         run: flutter build apk --release
         
-
-
       - name: Enable KVM group perms
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-
-      - name: Install Selenium Node Dependencies
-        working-directory: ./selenium
-        run: |
-          npm install
 
       - name: Install Appium Node Dependencies
         working-directory: ./appium
@@ -101,21 +154,57 @@ jobs:
             cd appium
             npx mocha --config .mocharc.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-android,html=true,json=true || true
 
-      - name: Run Web E2E Tests
-        working-directory: ./selenium
-        run: |
-          npx mocha --config .mocharc.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-web,html=true,json=true || true
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-report
+          path: appium/mochawesome-report/mochawesome-android.json
+
+  generate-reports:
+    needs: [backend-tests, flutter-tests, web-e2e-tests, android-e2e-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Download Backend Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-report
+          path: .
+          
+      - name: Download Flutter Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: flutter-report
+          path: .
+          
+      - name: Download Web Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-report
+          path: selenium/mochawesome-report/
+          
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-report
+          path: appium/mochawesome-report/
 
       - name: Generate Reports
         shell: bash
         run: |
           python -m pip install --upgrade pip
           pip install pandas openpyxl xlsxwriter
-          python -c "import pandas, openpyxl, xlsxwriter; print('Python report dependencies installed successfully')"
           echo "Generating multi-tier enterprise report..."
           python generate_e2e_report.py
           
-      - name: Upload Artifacts
+      - name: Upload Final Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Test-Reports
