@@ -162,11 +162,16 @@ jobs:
 
             echo "4. Starting Appium server and waiting for it to be fully ready..."
             appium --log-level error:error &
+            APPIUM_PID=$!
             sleep 10
             curl -s http://127.0.0.1:4723/status || exit 1
 
             echo "5. Executing Android E2E Tests..."
             cd appium && npx mocha --config .mocharc.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-android,html=true,json=true || true
+            cd ..
+
+            echo "6. Shutting down Appium server..."
+            kill $APPIUM_PID || true
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
