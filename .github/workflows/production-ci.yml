@@ -156,11 +156,25 @@ jobs:
             adb install -r appium/app/app-release.apk || exit 1
 
             echo "3. Extracting Package and Activity..."
-            AAPT_PATH=$(find $ANDROID_HOME/build-tools -name aapt | head -n 1)
-            APP_PACKAGE=$($AAPT_PATH dump badging appium/app/app-release.apk | grep package: | awk '{print $2}' | sed s/name=//g | sed s/\'//g)
-            APP_ACTIVITY=$($AAPT_PATH dump badging appium/app/app-release.apk | grep launchable-activity: | awk '{print $2}' | sed s/name=//g | sed s/\'//g)
-            echo "Detected Package: $APP_PACKAGE"
-            echo "Detected Activity: $APP_ACTIVITY"
+            AAPT_PATH=$(find ${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools -name aapt | sort -r | head -n 1)
+            if [ -z "$AAPT_PATH" ]; then
+              echo "Error: aapt tool not found in Android SDK"
+              exit 1
+            fi
+            
+            $AAPT_PATH dump badging appium/app/app-release.apk > apk_metadata.txt
+            APP_PACKAGE=$(grep "package:" apk_metadata.txt | awk -F"'" '{print $2}' | head -n 1)
+            APP_ACTIVITY=$(grep "launchable-activity:" apk_metadata.txt | awk -F"'" '{print $2}' | head -n 1)
+            
+            echo "Detected Package: '$APP_PACKAGE'"
+            echo "Detected Activity: '$APP_ACTIVITY'"
+            
+            if [ -z "$APP_PACKAGE" ] || [ -z "$APP_ACTIVITY" ]; then
+              echo "Error: Failed to extract APP_PACKAGE or APP_ACTIVITY from APK!"
+              echo "--- APK METADATA DUMP ---"
+              cat apk_metadata.txt
+              exit 1
+            fi
 
             echo "4. Launching Application manually via ADB..."
             adb shell am start -n $APP_PACKAGE/$APP_ACTIVITY || exit 1
