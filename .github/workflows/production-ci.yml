@@ -157,8 +157,9 @@ jobs:
             adb install -r appium/app/app-release.apk || exit 1
 
             echo "3. Extracting Package and Activity..."
-            AAPT_PATH=$(find ${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools -name aapt | sort -r | head -n 1)
-            [ -z "$AAPT_PATH" ] && echo "Error: aapt tool not found in Android SDK" && exit 1
+            AAPT_PATH=$(find ${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools -type f -name aapt 2>/dev/null | sort -r | head -n 1)
+            [ -z "$AAPT_PATH" ] && echo "aapt not found in SDK, falling back to apt-get..." && sudo apt-get update -y && sudo apt-get install -y aapt && AAPT_PATH=$(which aapt)
+            [ -z "$AAPT_PATH" ] && echo "Error: aapt tool could not be found or installed" && exit 1
             echo "Using AAPT_PATH: $AAPT_PATH"
             
             $AAPT_PATH dump badging appium/app/app-release.apk > apk_metadata.txt
