@@ -141,13 +141,7 @@ jobs:
           mkdir -p app
           cp ../build/app/outputs/flutter-apk/app-release.apk app/app-release.apk
 
-      - name: Run Android Emulator & E2E Tests
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 33
-          target: google_apis
-          arch: x86_64
-          profile: pixel_6
+
       - name: Run Android Emulator & E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
