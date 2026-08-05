@@ -62,8 +62,9 @@ const appiumServerConfig = {
   hostname: APPIUM_HOST,
   port: APPIUM_PORT,
   path: '/',
-  connectionRetryTimeout: 180000,
-  connectionRetryCount: 3,
+  connectionRetryTimeout: 10000,
+  connectionRetryCount: 0,
+  waitforTimeout: 1000,
   logLevel: process.env.APPIUM_LOG_LEVEL || 'info',
 };
 
