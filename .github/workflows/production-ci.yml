@@ -149,7 +149,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           script: |
-            appium &
+            appium --log-level error:error &
             sleep 5
             cd appium && npx mocha --config .mocharc.js --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-android,html=true,json=true || true
 
