@@ -318,6 +318,10 @@ def main():
     # Create zip
     with zipfile.ZipFile(ZIP_NAME, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, dirs, files in os.walk(OUTPUT_DIR):
+            for directory in dirs:
+                dir_path = os.path.join(root, directory)
+                arcname = os.path.relpath(dir_path, OUTPUT_DIR) + '/'
+                zipf.writestr(arcname, '')
             for file in files:
                 file_path = os.path.join(root, file)
                 arcname = os.path.relpath(file_path, OUTPUT_DIR)
