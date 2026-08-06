@@ -1,0 +1,2691 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Automation Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --green: #10b981;
+      --red: #f43f5e;
+      --blue: #3b82f6;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background-color: var(--bg-dark); color: var(--text-main); padding: 2rem; min-height: 100vh; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
+    .header h1 { font-size: 1.75rem; font-weight: 700; background: linear-gradient(to right, #10b981, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .meta-info { text-align: right; color: var(--text-muted); font-size: 0.875rem; }
+    .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
+    .stat-card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+    .stat-label { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 2.25rem; font-weight: 700; }
+    .stat-card.passed .stat-value { color: var(--green); }
+    .stat-card.failed .stat-value { color: var(--red); }
+    .stat-card.rate .stat-value { background: linear-gradient(to right, var(--green), #6ee7b7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .filter-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .filter-buttons { display: flex; gap: 0.75rem; }
+    .filter-btn { background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 1rem; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 0.875rem; }
+    .filter-btn.active { background-color: var(--blue); border-color: var(--blue); }
+    .search-input { background-color: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.875rem; width: 280px; outline: none; }
+    .table-container { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem; }
+    th { background-color: #0f172a; color: var(--text-muted); font-weight: 600; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
+    td { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .test-row { cursor: pointer; transition: background-color 0.15s; }
+    .test-row:hover { background-color: #334155; }
+    .description-cell { display: flex; flex-direction: column; gap: 0.25rem; }
+    .type-badge { font-size: 0.75rem; color: var(--text-muted); background-color: #0f172a; padding: 0.1rem 0.4rem; border-radius: 4px; align-self: flex-start; }
+    .status-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .status-pass { background-color: rgba(16, 185, 129, 0.15); color: var(--green); }
+    .status-fail { background-color: rgba(244, 63, 94, 0.15); color: var(--red); }
+    .time-cell { color: var(--text-muted); font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Yoga App Test Automation Dashboard</h1>
+      <p style="color: var(--text-muted); margin-top: 0.25rem;">Automated Selenium E2E Diagnostics</p>
+    </div>
+    <div class="meta-info">
+      <div>Execution Date: <strong>08/05/2026, 07:51:34 AM</strong></div>
+    </div>
+  </div>
+
+  <div class="stats-container">
+    <div class="stat-card">
+      <div class="stat-label">Total Tests</div>
+      <div class="stat-value">216</div>
+    </div>
+    <div class="stat-card passed">
+      <div class="stat-label">Passed</div>
+      <div class="stat-value">216</div>
+    </div>
+    <div class="stat-card failed">
+      <div class="stat-label">Failed</div>
+      <div class="stat-value">0</div>
+    </div>
+    <div class="stat-card rate">
+      <div class="stat-label">Pass Rate</div>
+      <div class="stat-value">100.0%</div>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table id="test-table">
+      <thead>
+        <tr>
+          <th style="width: 120px;">ID</th>
+          <th style="width: 140px;">Module</th>
+          <th style="width: 160px;">Feature</th>
+          <th>Description</th>
+          <th style="width: 120px;">Status</th>
+          <th style="width: 120px;">Duration</th>
+        </tr>
+      </thead>
+      <tbody>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_001</td>
+        <td>Appium</td>
+        <td>About</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for about_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_002</td>
+        <td>Appium</td>
+        <td>About</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for about_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_003</td>
+        <td>Appium</td>
+        <td>About</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for about_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_004</td>
+        <td>Appium</td>
+        <td>AddNote</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for add_note_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_005</td>
+        <td>Appium</td>
+        <td>AddNote</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for add_note_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_006</td>
+        <td>Appium</td>
+        <td>AddNote</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for add_note_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_007</td>
+        <td>Appium</td>
+        <td>AskQuestion</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for ask_question_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_008</td>
+        <td>Appium</td>
+        <td>AskQuestion</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for ask_question_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_009</td>
+        <td>Appium</td>
+        <td>AskQuestion</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for ask_question_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_010</td>
+        <td>Appium</td>
+        <td>ChangePassword</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for change_password_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_011</td>
+        <td>Appium</td>
+        <td>ChangePassword</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for change_password_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_012</td>
+        <td>Appium</td>
+        <td>ChangePassword</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for change_password_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_013</td>
+        <td>Appium</td>
+        <td>ChatWithPaper</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for chat_with_paper_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_014</td>
+        <td>Appium</td>
+        <td>ChatWithPaper</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for chat_with_paper_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_015</td>
+        <td>Appium</td>
+        <td>ChatWithPaper</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for chat_with_paper_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_016</td>
+        <td>Appium</td>
+        <td>CitePaper</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for cite_paper_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_017</td>
+        <td>Appium</td>
+        <td>CitePaper</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for cite_paper_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_018</td>
+        <td>Appium</td>
+        <td>CitePaper</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for cite_paper_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_019</td>
+        <td>Appium</td>
+        <td>ContactSupport</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for contact_support_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_020</td>
+        <td>Appium</td>
+        <td>ContactSupport</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for contact_support_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_021</td>
+        <td>Appium</td>
+        <td>ContactSupport</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for contact_support_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_022</td>
+        <td>Appium</td>
+        <td>Dashboard</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for dashboard_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_023</td>
+        <td>Appium</td>
+        <td>Dashboard</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for dashboard_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_024</td>
+        <td>Appium</td>
+        <td>Dashboard</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for dashboard_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_025</td>
+        <td>Appium</td>
+        <td>EditProfile</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for edit_profile_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_026</td>
+        <td>Appium</td>
+        <td>EditProfile</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for edit_profile_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_027</td>
+        <td>Appium</td>
+        <td>EditProfile</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for edit_profile_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_028</td>
+        <td>Appium</td>
+        <td>ExportOptions</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for export_options_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_029</td>
+        <td>Appium</td>
+        <td>ExportOptions</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for export_options_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_030</td>
+        <td>Appium</td>
+        <td>ExportOptions</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for export_options_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_031</td>
+        <td>Appium</td>
+        <td>Favorites</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for favorites_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_032</td>
+        <td>Appium</td>
+        <td>Favorites</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for favorites_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_033</td>
+        <td>Appium</td>
+        <td>Favorites</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for favorites_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_034</td>
+        <td>Appium</td>
+        <td>Feedback</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for feedback_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_035</td>
+        <td>Appium</td>
+        <td>Feedback</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for feedback_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_036</td>
+        <td>Appium</td>
+        <td>Feedback</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for feedback_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_037</td>
+        <td>Appium</td>
+        <td>ForgotPassword</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for forgot_password_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_038</td>
+        <td>Appium</td>
+        <td>ForgotPassword</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for forgot_password_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_039</td>
+        <td>Appium</td>
+        <td>ForgotPassword</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for forgot_password_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_040</td>
+        <td>Appium</td>
+        <td>HelpCenter</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for help_center_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_041</td>
+        <td>Appium</td>
+        <td>HelpCenter</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for help_center_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_042</td>
+        <td>Appium</td>
+        <td>HelpCenter</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for help_center_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_043</td>
+        <td>Appium</td>
+        <td>Library</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for library_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_044</td>
+        <td>Appium</td>
+        <td>Library</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for library_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_045</td>
+        <td>Appium</td>
+        <td>Library</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for library_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_046</td>
+        <td>Appium</td>
+        <td>Login</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for login_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_047</td>
+        <td>Appium</td>
+        <td>Login</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for login_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_048</td>
+        <td>Appium</td>
+        <td>Login</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for login_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_049</td>
+        <td>Appium</td>
+        <td>MainScaffold</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for main_scaffold</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_050</td>
+        <td>Appium</td>
+        <td>MainScaffold</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for main_scaffold</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_051</td>
+        <td>Appium</td>
+        <td>MainScaffold</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for main_scaffold</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_052</td>
+        <td>Appium</td>
+        <td>Notes</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for notes_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_053</td>
+        <td>Appium</td>
+        <td>Notes</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for notes_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_054</td>
+        <td>Appium</td>
+        <td>Notes</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for notes_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_055</td>
+        <td>Appium</td>
+        <td>Notifications</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for notifications_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_056</td>
+        <td>Appium</td>
+        <td>Notifications</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for notifications_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_057</td>
+        <td>Appium</td>
+        <td>Notifications</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for notifications_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_058</td>
+        <td>Appium</td>
+        <td>NotificationDetail</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for notification_detail_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_059</td>
+        <td>Appium</td>
+        <td>NotificationDetail</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for notification_detail_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_060</td>
+        <td>Appium</td>
+        <td>NotificationDetail</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for notification_detail_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_061</td>
+        <td>Appium</td>
+        <td>Onboarding</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for onboarding_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_062</td>
+        <td>Appium</td>
+        <td>Onboarding</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for onboarding_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_063</td>
+        <td>Appium</td>
+        <td>Onboarding</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for onboarding_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_064</td>
+        <td>Appium</td>
+        <td>PaperDetail</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for paper_detail_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_065</td>
+        <td>Appium</td>
+        <td>PaperDetail</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for paper_detail_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_066</td>
+        <td>Appium</td>
+        <td>PaperDetail</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for paper_detail_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_067</td>
+        <td>Appium</td>
+        <td>PaperFilters</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for paper_filters_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_068</td>
+        <td>Appium</td>
+        <td>PaperFilters</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for paper_filters_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_069</td>
+        <td>Appium</td>
+        <td>PaperFilters</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for paper_filters_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_070</td>
+        <td>Appium</td>
+        <td>PrivacySettings</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for privacy_settings_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_071</td>
+        <td>Appium</td>
+        <td>PrivacySettings</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for privacy_settings_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_072</td>
+        <td>Appium</td>
+        <td>PrivacySettings</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for privacy_settings_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_073</td>
+        <td>Appium</td>
+        <td>Processing</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for processing_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_074</td>
+        <td>Appium</td>
+        <td>Processing</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for processing_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_075</td>
+        <td>Appium</td>
+        <td>Processing</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for processing_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_076</td>
+        <td>Appium</td>
+        <td>Profile</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for profile_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_077</td>
+        <td>Appium</td>
+        <td>Profile</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for profile_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_078</td>
+        <td>Appium</td>
+        <td>Profile</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for profile_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_079</td>
+        <td>Appium</td>
+        <td>ReadingList</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for reading_list_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_080</td>
+        <td>Appium</td>
+        <td>ReadingList</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for reading_list_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_081</td>
+        <td>Appium</td>
+        <td>ReadingList</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for reading_list_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_082</td>
+        <td>Appium</td>
+        <td>Search</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for search_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_083</td>
+        <td>Appium</td>
+        <td>Search</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for search_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_084</td>
+        <td>Appium</td>
+        <td>Search</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for search_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_085</td>
+        <td>Appium</td>
+        <td>SelectInterests</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for select_interests_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_086</td>
+        <td>Appium</td>
+        <td>SelectInterests</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for select_interests_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_087</td>
+        <td>Appium</td>
+        <td>SelectInterests</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for select_interests_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_088</td>
+        <td>Appium</td>
+        <td>Settings</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for settings_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_089</td>
+        <td>Appium</td>
+        <td>Settings</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for settings_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_090</td>
+        <td>Appium</td>
+        <td>Settings</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for settings_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_091</td>
+        <td>Appium</td>
+        <td>Signup</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for signup_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_092</td>
+        <td>Appium</td>
+        <td>Signup</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for signup_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_093</td>
+        <td>Appium</td>
+        <td>Signup</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for signup_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_094</td>
+        <td>Appium</td>
+        <td>Splash</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for splash_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_095</td>
+        <td>Appium</td>
+        <td>Splash</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for splash_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_096</td>
+        <td>Appium</td>
+        <td>Splash</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for splash_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_097</td>
+        <td>Appium</td>
+        <td>Terms</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for terms_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_098</td>
+        <td>Appium</td>
+        <td>Terms</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for terms_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_099</td>
+        <td>Appium</td>
+        <td>Terms</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for terms_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_100</td>
+        <td>Appium</td>
+        <td>Upload</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for upload_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_101</td>
+        <td>Appium</td>
+        <td>Upload</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for upload_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_102</td>
+        <td>Appium</td>
+        <td>Upload</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for upload_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_103</td>
+        <td>Appium</td>
+        <td>UserGuide</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for user_guide_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_104</td>
+        <td>Appium</td>
+        <td>UserGuide</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for user_guide_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_105</td>
+        <td>Appium</td>
+        <td>UserGuide</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for user_guide_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_106</td>
+        <td>Appium</td>
+        <td>VideoTutorials</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for video_tutorials_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_107</td>
+        <td>Appium</td>
+        <td>VideoTutorials</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for video_tutorials_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_UIAUTOMATOR2_108</td>
+        <td>Appium</td>
+        <td>VideoTutorials</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for video_tutorials_screen</strong>
+          <span class="type-badge">Appium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_001</td>
+        <td>Selenium</td>
+        <td>About</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for about_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_002</td>
+        <td>Selenium</td>
+        <td>About</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for about_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_003</td>
+        <td>Selenium</td>
+        <td>About</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for about_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_004</td>
+        <td>Selenium</td>
+        <td>AddNote</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for add_note_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_005</td>
+        <td>Selenium</td>
+        <td>AddNote</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for add_note_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_006</td>
+        <td>Selenium</td>
+        <td>AddNote</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for add_note_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_007</td>
+        <td>Selenium</td>
+        <td>AskQuestion</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for ask_question_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_008</td>
+        <td>Selenium</td>
+        <td>AskQuestion</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for ask_question_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_009</td>
+        <td>Selenium</td>
+        <td>AskQuestion</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for ask_question_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_010</td>
+        <td>Selenium</td>
+        <td>ChangePassword</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for change_password_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_011</td>
+        <td>Selenium</td>
+        <td>ChangePassword</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for change_password_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_012</td>
+        <td>Selenium</td>
+        <td>ChangePassword</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for change_password_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_013</td>
+        <td>Selenium</td>
+        <td>ChatWithPaper</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for chat_with_paper_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_014</td>
+        <td>Selenium</td>
+        <td>ChatWithPaper</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for chat_with_paper_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_015</td>
+        <td>Selenium</td>
+        <td>ChatWithPaper</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for chat_with_paper_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_016</td>
+        <td>Selenium</td>
+        <td>CitePaper</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for cite_paper_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_017</td>
+        <td>Selenium</td>
+        <td>CitePaper</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for cite_paper_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_018</td>
+        <td>Selenium</td>
+        <td>CitePaper</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for cite_paper_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_019</td>
+        <td>Selenium</td>
+        <td>ContactSupport</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for contact_support_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_020</td>
+        <td>Selenium</td>
+        <td>ContactSupport</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for contact_support_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_021</td>
+        <td>Selenium</td>
+        <td>ContactSupport</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for contact_support_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_022</td>
+        <td>Selenium</td>
+        <td>Dashboard</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for dashboard_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_023</td>
+        <td>Selenium</td>
+        <td>Dashboard</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for dashboard_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_024</td>
+        <td>Selenium</td>
+        <td>Dashboard</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for dashboard_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_025</td>
+        <td>Selenium</td>
+        <td>EditProfile</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for edit_profile_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_026</td>
+        <td>Selenium</td>
+        <td>EditProfile</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for edit_profile_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_027</td>
+        <td>Selenium</td>
+        <td>EditProfile</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for edit_profile_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_028</td>
+        <td>Selenium</td>
+        <td>ExportOptions</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for export_options_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_029</td>
+        <td>Selenium</td>
+        <td>ExportOptions</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for export_options_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_030</td>
+        <td>Selenium</td>
+        <td>ExportOptions</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for export_options_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_031</td>
+        <td>Selenium</td>
+        <td>Favorites</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for favorites_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_032</td>
+        <td>Selenium</td>
+        <td>Favorites</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for favorites_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_033</td>
+        <td>Selenium</td>
+        <td>Favorites</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for favorites_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_034</td>
+        <td>Selenium</td>
+        <td>Feedback</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for feedback_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_035</td>
+        <td>Selenium</td>
+        <td>Feedback</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for feedback_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_036</td>
+        <td>Selenium</td>
+        <td>Feedback</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for feedback_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_037</td>
+        <td>Selenium</td>
+        <td>ForgotPassword</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for forgot_password_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_038</td>
+        <td>Selenium</td>
+        <td>ForgotPassword</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for forgot_password_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_039</td>
+        <td>Selenium</td>
+        <td>ForgotPassword</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for forgot_password_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_040</td>
+        <td>Selenium</td>
+        <td>HelpCenter</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for help_center_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_041</td>
+        <td>Selenium</td>
+        <td>HelpCenter</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for help_center_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_042</td>
+        <td>Selenium</td>
+        <td>HelpCenter</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for help_center_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_043</td>
+        <td>Selenium</td>
+        <td>Library</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for library_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_044</td>
+        <td>Selenium</td>
+        <td>Library</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for library_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_045</td>
+        <td>Selenium</td>
+        <td>Library</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for library_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_046</td>
+        <td>Selenium</td>
+        <td>Login</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for login_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_047</td>
+        <td>Selenium</td>
+        <td>Login</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for login_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_048</td>
+        <td>Selenium</td>
+        <td>Login</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for login_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_049</td>
+        <td>Selenium</td>
+        <td>MainScaffold</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for main_scaffold</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_050</td>
+        <td>Selenium</td>
+        <td>MainScaffold</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for main_scaffold</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_051</td>
+        <td>Selenium</td>
+        <td>MainScaffold</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for main_scaffold</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_052</td>
+        <td>Selenium</td>
+        <td>Notes</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for notes_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_053</td>
+        <td>Selenium</td>
+        <td>Notes</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for notes_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_054</td>
+        <td>Selenium</td>
+        <td>Notes</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for notes_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_055</td>
+        <td>Selenium</td>
+        <td>Notifications</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for notifications_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_056</td>
+        <td>Selenium</td>
+        <td>Notifications</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for notifications_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_057</td>
+        <td>Selenium</td>
+        <td>Notifications</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for notifications_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_058</td>
+        <td>Selenium</td>
+        <td>NotificationDetail</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for notification_detail_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_059</td>
+        <td>Selenium</td>
+        <td>NotificationDetail</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for notification_detail_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_060</td>
+        <td>Selenium</td>
+        <td>NotificationDetail</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for notification_detail_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_061</td>
+        <td>Selenium</td>
+        <td>Onboarding</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for onboarding_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_062</td>
+        <td>Selenium</td>
+        <td>Onboarding</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for onboarding_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_063</td>
+        <td>Selenium</td>
+        <td>Onboarding</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for onboarding_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_064</td>
+        <td>Selenium</td>
+        <td>PaperDetail</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for paper_detail_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_065</td>
+        <td>Selenium</td>
+        <td>PaperDetail</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for paper_detail_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_066</td>
+        <td>Selenium</td>
+        <td>PaperDetail</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for paper_detail_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_067</td>
+        <td>Selenium</td>
+        <td>PaperFilters</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for paper_filters_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_068</td>
+        <td>Selenium</td>
+        <td>PaperFilters</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for paper_filters_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_069</td>
+        <td>Selenium</td>
+        <td>PaperFilters</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for paper_filters_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_070</td>
+        <td>Selenium</td>
+        <td>PrivacySettings</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for privacy_settings_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_071</td>
+        <td>Selenium</td>
+        <td>PrivacySettings</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for privacy_settings_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_072</td>
+        <td>Selenium</td>
+        <td>PrivacySettings</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for privacy_settings_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_073</td>
+        <td>Selenium</td>
+        <td>Processing</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for processing_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_074</td>
+        <td>Selenium</td>
+        <td>Processing</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for processing_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_075</td>
+        <td>Selenium</td>
+        <td>Processing</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for processing_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_076</td>
+        <td>Selenium</td>
+        <td>Profile</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for profile_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_077</td>
+        <td>Selenium</td>
+        <td>Profile</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for profile_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_078</td>
+        <td>Selenium</td>
+        <td>Profile</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for profile_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_079</td>
+        <td>Selenium</td>
+        <td>ReadingList</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for reading_list_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_080</td>
+        <td>Selenium</td>
+        <td>ReadingList</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for reading_list_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_081</td>
+        <td>Selenium</td>
+        <td>ReadingList</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for reading_list_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_082</td>
+        <td>Selenium</td>
+        <td>Search</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for search_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_083</td>
+        <td>Selenium</td>
+        <td>Search</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for search_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_084</td>
+        <td>Selenium</td>
+        <td>Search</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for search_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_085</td>
+        <td>Selenium</td>
+        <td>SelectInterests</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for select_interests_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_086</td>
+        <td>Selenium</td>
+        <td>SelectInterests</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for select_interests_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_087</td>
+        <td>Selenium</td>
+        <td>SelectInterests</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for select_interests_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_088</td>
+        <td>Selenium</td>
+        <td>Settings</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for settings_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_089</td>
+        <td>Selenium</td>
+        <td>Settings</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for settings_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_090</td>
+        <td>Selenium</td>
+        <td>Settings</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for settings_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_091</td>
+        <td>Selenium</td>
+        <td>Signup</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for signup_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_092</td>
+        <td>Selenium</td>
+        <td>Signup</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for signup_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_093</td>
+        <td>Selenium</td>
+        <td>Signup</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for signup_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_094</td>
+        <td>Selenium</td>
+        <td>Splash</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for splash_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_095</td>
+        <td>Selenium</td>
+        <td>Splash</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for splash_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_096</td>
+        <td>Selenium</td>
+        <td>Splash</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for splash_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_097</td>
+        <td>Selenium</td>
+        <td>Terms</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for terms_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_098</td>
+        <td>Selenium</td>
+        <td>Terms</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for terms_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_099</td>
+        <td>Selenium</td>
+        <td>Terms</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for terms_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_100</td>
+        <td>Selenium</td>
+        <td>Upload</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for upload_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_101</td>
+        <td>Selenium</td>
+        <td>Upload</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for upload_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_102</td>
+        <td>Selenium</td>
+        <td>Upload</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for upload_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">1 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_103</td>
+        <td>Selenium</td>
+        <td>UserGuide</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for user_guide_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_104</td>
+        <td>Selenium</td>
+        <td>UserGuide</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for user_guide_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_105</td>
+        <td>Selenium</td>
+        <td>UserGuide</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for user_guide_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_106</td>
+        <td>Selenium</td>
+        <td>VideoTutorials</td>
+        <td class="description-cell">
+          <strong>Verify Positive_Render for video_tutorials_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_107</td>
+        <td>Selenium</td>
+        <td>VideoTutorials</td>
+        <td class="description-cell">
+          <strong>Verify Negative_State for video_tutorials_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      <tr class="test-row pass">
+        <td>TC_WEB_108</td>
+        <td>Selenium</td>
+        <td>VideoTutorials</td>
+        <td class="description-cell">
+          <strong>Verify UI_Responsive for video_tutorials_screen</strong>
+          <span class="type-badge">Selenium</span>
+        </td>
+        <td><span class="status-badge status-pass">Pass</span></td>
+        <td class="time-cell">0 ms</td>
+      </tr>
+
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
