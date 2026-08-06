@@ -43,8 +43,8 @@ class Url {
     }
     try {
       if (io.Platform.isAndroid) {
-        return 'http://10.0.2.2:5000';
-      }
+  return 'http://172.18.104.161:5000';
+  }
     } catch (_) {}
     return 'http://localhost:5000';
   }
