@@ -35,8 +35,12 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'research_ai_secret')
 
 db = SQLAlchemy(app)
 
+
+
+
+
 # ─────────────────────────────────────────
-# GROQ AI CONFIG & FALLBACKS
+# GROQ AI CONFIG & FALLBACKS (For Chat only)
 # ─────────────────────────────────────────
 
 GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
@@ -68,75 +72,6 @@ def _clip_end(text):
     return text[-MAX_PAPER_CHARS:]
 
 
-
-def clean_extracted_text(text):
-    if not text:
-        return ""
-    import re
-    # Remove excessive blank lines
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    # Fix broken line wraps
-    text = re.sub(r'([^\.\!\?\:\;\-\n])\n+([a-z])', r'\1 \2', text)
-    # Remove hyphenated line wraps
-    text = re.sub(r'([a-zA-Z]+)-\n+([a-zA-Z]+)', r'\1\2', text)
-    return text.strip()
-
-def extract_text_from_pdf(pdf_bytes):
-    import io
-    extracted_text = ""
-    # Stage 1: PyMuPDF
-    try:
-        import fitz
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        for page in doc:
-            text = page.get_text("text")
-            if text:
-                extracted_text += text + "\n"
-        doc.close()
-    except Exception as e:
-        print("PyMuPDF failed:", e)
-
-    if len(extracted_text.strip()) > 500:
-        return extracted_text
-
-    print("Falling back to pdfplumber...")
-    try:
-        import pdfplumber
-        extracted_text = ""
-        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text()
-                if text:
-                    extracted_text += text + "\n"
-    except Exception as e:
-        print("pdfplumber failed:", e)
-
-    if len(extracted_text.strip()) > 500:
-        return extracted_text
-
-    print("Falling back to pdfminer...")
-    try:
-        from pdfminer.high_level import extract_text
-        extracted_text = extract_text(io.BytesIO(pdf_bytes))
-    except Exception as e:
-        print("pdfminer failed:", e)
-
-    if len(extracted_text.strip()) > 500:
-        return extracted_text
-
-    print("Falling back to OCR...")
-    try:
-        from pdf2image import convert_from_bytes
-        import pytesseract
-        extracted_text = ""
-        images = convert_from_bytes(pdf_bytes, dpi=200, fmt="jpeg")
-        for img in images:
-            text = pytesseract.image_to_string(img)
-            if text:
-                extracted_text += text + "\n"
-    except Exception as e:
-        print("OCR failed:", e)
-    return extracted_text
 
 def groq_chat_with_retry(messages, max_tokens=1024, temperature=0.1, required_length=10, max_retries=3):
     import time
@@ -574,37 +509,43 @@ def renumber_references(ref_text):
 
 @app.route('/papers/analyze', methods=['POST'])
 def analyze_paper():
+    """Analyze paper using PyMuPDF and Groq as the single source of truth."""
     try:
         data = request.get_json()
         required = ['user_id', 'file_name', 'file_bytes']
         
         if not data or not all(k in data for k in required):
+            # Fallback if old clients send 'content' instead of 'file_bytes'
             if 'content' in data and 'file_bytes' not in data:
-                pass
+                pass # We'll handle it
             else:
                 return jsonify({'error': 'Missing required fields'}), 400
 
         user_id = data['user_id']
         file_name = data['file_name']
         
+        # Determine text content
         extracted_text = ""
         if 'file_bytes' in data and data['file_bytes']:
+            # Decode base64 and parse with fitz
             try:
                 pdf_bytes = base64.b64decode(data['file_bytes'])
-                extracted_text = extract_text_from_pdf(pdf_bytes)
-                extracted_text = clean_extracted_text(extracted_text)
+                doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                for page in doc:
+                    extracted_text += page.get_text("text") + "\n"
             except Exception as e:
-                return jsonify({'error': f'Failed to process PDF: {str(e)}'}), 400
+                return jsonify({'error': f'Failed to read PDF: {str(e)}'}), 400
         else:
             extracted_text = data.get('content', '')
 
-        if len(extracted_text.strip()) < 100:
-            return jsonify({'error': 'No text could be extracted from the file. It may be corrupted or highly protected.'}), 400
+        if not extracted_text.strip():
+            return jsonify({'error': 'No text could be extracted from the file.'}), 400
 
-        meta_json_str = groq_chat_with_retry([
+        # Now extract Metadata via Groq
+        meta_json = groq_chat([
             {'role': 'system', 'content': 'You extract bibliographic metadata. Reply ONLY with raw JSON, no markdown, no explanation.'},
             {'role': 'user', 'content': 'From this paper return JSON: {"title":"...","authors":"...","year":"YYYY","abstract":"...","keywords":"..."}. If unknown use "".\n\n' + _clip(extracted_text)}
-        ], max_tokens=600, temperature=0.1, required_length=20, max_retries=3)
+        ], max_tokens=600, temperature=0.1)
         
         title = file_name.rsplit('.', 1)[0]
         authors = ""
@@ -612,53 +553,71 @@ def analyze_paper():
         abstract = ""
         keywords = ""
         
-        if meta_json_str:
-            try:
-                meta_str = meta_json_str.strip()
-                if meta_str.startswith('```json'):
-                    meta_str = meta_str.split('```json')[1].split('```')[0].strip()
-                elif meta_str.startswith('```'):
-                    meta_str = meta_str.split('```')[1].split('```')[0].strip()
-                import json
-                meta = json.loads(meta_str)
-                title = meta.get('title', title) or title
-                authors = meta.get('authors', '')
-                year = meta.get('year', '')
-                abstract = meta.get('abstract', '')
-                keywords = meta.get('keywords', '')
-            except Exception:
-                pass
+        try:
+            clean_json = meta_json.replace('```json', '').replace('```', '').strip()
+            import json
+            meta = json.loads(clean_json)
+            if meta.get('title'): title = meta.get('title')
+            authors = meta.get('authors', '')
+            year = meta.get('year', '')
+            abstract = meta.get('abstract', '')
+            keywords = meta.get('keywords', '')
+        except Exception:
+            pass # fallback to defaults
 
+        # Guarantee fallback for Abstract
         if not abstract or len(abstract.strip()) < 10:
-            abstract = groq_chat_with_retry([
+            abstract = groq_chat([
                 {'role': 'system', 'content': 'You generate concise abstracts. Return ONLY the abstract text.'},
                 {'role': 'user', 'content': 'Generate a concise 1-paragraph abstract for this paper:\n\n' + _clip(extracted_text)}
-            ], max_tokens=400, required_length=50, max_retries=4)
+            ], max_tokens=400)
+            if not abstract:
+                abstract = "Abstract generation failed, please review the document manually."
 
-        if not keywords or len(keywords.strip()) < 5:
-            keywords = groq_chat_with_retry([
+        # Guarantee fallback for Keywords
+        if not keywords or len(keywords.strip()) < 3:
+            keywords = groq_chat([
                 {'role': 'system', 'content': 'You generate keywords. Return ONLY a comma separated list of keywords.'},
-                {'role': 'user', 'content': 'Generate 5 to 10 keywords for this paper:\n\n' + _clip(extracted_text)}
-            ], max_tokens=100, required_length=10, max_retries=3)
+                {'role': 'user', 'content': 'Generate 5 keywords for this paper:\n\n' + _clip(extracted_text)}
+            ], max_tokens=100)
+            if not keywords:
+                keywords = "Research, Paper, Unclassified"
 
-        summary = groq_chat_with_retry([
+        # Guarantee fallback for Summary
+        summary = groq_chat([
             {'role': 'system', 'content': 'You are ResearchAI. Explain papers in simple, clear language with no jargon.'},
             {'role': 'user', 'content': "Summarize this paper in SIMPLE language with short sections: What it's about, Methods, Key findings, Why it matters, Limitations.\n\n" + _clip(extracted_text)}
-        ], max_tokens=1500, required_length=100, max_retries=4)
-
-        references = groq_chat_with_retry([
-            {'role': 'system', 'content': '''You are a reference extractor.\n\nExtract ONLY the first 5 references from the uploaded paper.\n\nRules:\n- Return at most 5 references.\n- Copy them exactly as they appear.\n- Do NOT generate new references.\n- Do NOT complete incomplete references.\n- Do NOT reformat.\n- Do NOT output any introductory text (e.g., "Here are the references:"). Start directly with the references.\n- If there are fewer than 5 references, return only those available.\n- If no References section exists, return exactly:\n"No references found in the uploaded paper."'''},
-            {'role': 'user', 'content': _clip_end(extracted_text)}
-        ], max_tokens=800, temperature=0, required_length=10, max_retries=3)
+        ], max_tokens=1500)
         
-        if references:
-            references = renumber_references(references)
-        else:
-            references = "No references found in the uploaded paper."
-            
-        if not title or not abstract or not summary or not keywords:
-            return jsonify({'error': 'AI extraction pipeline failed completely after maximum retries. The paper could not be analyzed.'}), 500
-            
+        if not summary or len(summary.strip()) < 20:
+            summary = "Summary generation failed or the API returned an empty response."
+
+        # Extract References
+        # Extract References (maximum 5)
+        references = groq_chat([
+            {
+                'role': 'system',
+                'content': '''You are a reference extractor.
+
+        Extract ONLY the first 5 references from the uploaded paper.
+
+        Rules:
+        - Return at most 5 references.
+        - Copy them exactly as they appear.
+        - Do NOT generate new references.
+        - Do NOT complete incomplete references.
+        - Do NOT reformat.
+        - If there are fewer than 5 references, return only those available.
+        - If no References section exists, return exactly:
+        "No references found in the uploaded paper."
+        '''
+            },
+            {
+                'role': 'user',
+                'content': _clip_end(extracted_text)
+            }
+        ], max_tokens=800, temperature=0)
+        references = renumber_references(references)
         paper = Paper(
             user_id=user_id,
             file_name=file_name,
@@ -675,6 +634,7 @@ def analyze_paper():
         db.session.add(paper)
         db.session.commit()
 
+        
         create_notification(user_id, 'Paper analysis completed', f'Your paper "{paper.title}" has been analyzed and is ready to view.', 'Icons.check_circle_outline', paper.id)
 
         return jsonify({
@@ -697,6 +657,8 @@ def analyze_paper():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
 
 @app.route('/papers/<int:paper_id>/citations', methods=['GET'])
 def paper_citations(paper_id):
@@ -721,7 +683,6 @@ def paper_citations(paper_id):
     - Format them in IEEE style.
     - Do NOT generate any new references.
     - Do NOT suggest related papers.
-    - Do NOT output any introductory text (e.g., "Here are the references:"). Start directly with the references.
     - If fewer than 5 references exist, return only those.
     - If no references exist, return exactly:
     "No references found in the uploaded paper."
@@ -747,6 +708,8 @@ def paper_citations(paper_id):
         return jsonify({'error': str(e)}), 500
 
 
+
+
 @app.route('/papers/<int:paper_id>/cite', methods=['POST'])
 def cite_paper(paper_id):
     """Single citation of the paper in a chosen style (APA/MLA/IEEE/Chicago/BibTeX)."""
@@ -763,10 +726,11 @@ def cite_paper(paper_id):
         ], max_tokens=400, temperature=0.1)
         if result is None:
             return jsonify({'error': 'AI is busy right now. Please try again.'}), 503
-        create_notification(p.user_id, 'Citation generated', f'{style} citation was generated for "{p.title}".', 'Icons.format_quote', p.id)
         return jsonify({'style': style, 'citation': result.strip()}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
 
 
 @app.route('/papers/<int:paper_id>/favorite', methods=['POST'])

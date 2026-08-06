@@ -42,6 +42,6 @@ class Url {
     }
 
     // Default hosted backend (Render)
-    return 'https://research-ai-juir.onrender.com';
+    return 'http://127.0.0.1:5000';
   }
 }

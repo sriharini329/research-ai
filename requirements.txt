@@ -13,3 +13,14 @@ pytesseract>=0.3.10
 pdf2image>=1.17.0
 Pillow>=10.2.0
 gunicorn==23.0.0
+scikit-learn
+sentence-transformers
+faiss-cpu
+networkx
+seaborn
+matplotlib
+nltk
+joblib
+numpy
+pandas
+arxiv

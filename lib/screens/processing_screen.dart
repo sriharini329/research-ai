@@ -18,7 +18,7 @@ class ProcessingScreen extends StatefulWidget {
 }
 
 class _ProcessingScreenState extends State<ProcessingScreen> {
-  final _steps = ['Uploading Document', 'Extracting Text (PyMuPDF)', 'Analyzing Content (Groq)'];
+  final _steps = ['Uploading Document', 'Processing Document', 'Analyzing Research Paper'];
   int _done = 0;
   bool _complete = false;
   String? _error;
