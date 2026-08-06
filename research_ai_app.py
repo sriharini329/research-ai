@@ -20,7 +20,8 @@ load_dotenv()
 
 pymysql.install_as_MySQLdb()
 
-app = Flask(__name__, static_folder='dist', static_url_path='')
+dist_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dist')
+app = Flask(__name__, static_folder=dist_dir, static_url_path='')
 CORS(app)
 
 # Database Connection URL configuration (with SQLite fallback)
