@@ -36,28 +36,35 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'research_ai_secret')
 
 db = SQLAlchemy(app)
 
+@app.before_request
+def log_request_info():
+    print("="*80)
+    print(f"REQUEST: {request.method} {request.path}")
+    print(f"Content-Type: {request.content_type}")
+    print(f"Content-Length: {request.content_length}")
+    print("="*80)
+
+@app.after_request
+def add_pna_header(response):
+    response.headers['Access-Control-Allow-Private-Network'] = 'true'
+    return response
+
 
 
 
 
 # ─────────────────────────────────────────
-# GROQ AI CONFIG & FALLBACKS (For Chat only)
+# OLLAMA AI CONFIG & FALLBACKS (For Chat only)
 # ─────────────────────────────────────────
 
-GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-GROQ_MODEL = 'llama-3.3-70b-versatile'
-MAX_PAPER_CHARS = 6000
+OLLAMA_URL = os.environ.get('OLLAMA_URL', 'http://localhost:11434/api/chat')
+OLLAMA_MODEL = "qwen2.5:1.5b"
+MAX_PAPER_CHARS = 5000
 
-# Load Groq Keys
-GROQ_API_KEYS = []
-keys_str = os.environ.get('GROQ_API_KEYS') or os.environ.get('GROQ_API_KEY')
-print("GROQ_API_KEYS loaded:", keys_str[:10] + "..." if keys_str else "NOT FOUND")
-if keys_str:
-    GROQ_API_KEYS = [k.strip() for k in keys_str.replace(',', ' ').split() if k.strip()]
-
-if not GROQ_API_KEYS:
-    print("WARNING: No GROQ_API_KEYS defined in environment. Running in Mock AI Mode.")
-
+print("="*60)
+print(f"Using Ollama Model : {OLLAMA_MODEL}")
+print(f"Max Prompt Chars   : {MAX_PAPER_CHARS}")
+print("="*60)
 
 def _clip(text):
     if text and len(text) > MAX_PAPER_CHARS:
@@ -74,10 +81,10 @@ def _clip_end(text):
 
 
 
-def groq_chat_with_retry(messages, max_tokens=1024, temperature=0.1, required_length=10, max_retries=3):
+def ollama_chat_with_retry(messages, max_tokens=1024, temperature=0.1, required_length=10, max_retries=3):
     import time
     for attempt in range(max_retries):
-        result = groq_chat(messages, max_tokens=max_tokens, temperature=temperature)
+        result = ollama_chat(messages, max_tokens=max_tokens, temperature=temperature)
         if result and len(result.strip()) >= required_length:
             return result.strip()
         print(f"AI response too short or empty. Retry {attempt+1}/{max_retries}")
@@ -85,88 +92,54 @@ def groq_chat_with_retry(messages, max_tokens=1024, temperature=0.1, required_le
     return None
 
 
-def groq_chat(messages, max_tokens=1024, temperature=0.4):
-    """Calls Groq chat completions with multi-key fallback and retries. Returns text."""
+def ollama_chat(messages, max_tokens=1024, temperature=0.4):
+    """Calls Ollama chat completions. Returns text."""
     import time
-    if not GROQ_API_KEYS:
-        return "AI summary unavailable because no Groq API key is configured."
-        
-    max_retries_per_key = 3
-    for key in GROQ_API_KEYS:
-        for attempt in range(max_retries_per_key):
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            print("Sending request to Ollama...")
             try:
                 resp = requests.post(
-                    GROQ_URL,
-                    headers={'Authorization': f'Bearer {key}',
-                             'Content-Type': 'application/json'},
+                    OLLAMA_URL,
                     json={
-                        'model': GROQ_MODEL,
+                        'model': OLLAMA_MODEL,
                         'messages': messages,
-                        'temperature': temperature,
-                        'max_tokens': max_tokens,
-                        'top_p': 0.9,
+                        'options': {
+                            'temperature': temperature,
+                            'num_predict': max_tokens,
+                            'top_p': 0.9,
+                        },
                         'stream': False,
                     },
-                    timeout=60,
+                    timeout=120,
                 )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    choices = data.get('choices', [])
-                    if choices:
-                        return choices[0]['message']['content']
-
-                elif resp.status_code == 429:
-                    print(f"Groq Rate Limit (Key {key[:4]}..., Attempt {attempt+1}): {resp.status_code}")
-                    time.sleep(2 ** attempt)  # Exponential backoff
-                    continue
-
-                else:
-                    print(f"Groq Error (Key {key[:4]}...): {resp.status_code} - {resp.text}")
-                    break # Skip to next key
             except Exception as e:
-                print(f"Groq Exception (Key {key[:4]}...): {e}")
-                time.sleep(1)
-                continue
-    print("All Groq API calls failed.")
-    return None
-        
-    for key in GROQ_API_KEYS:
-        try:
-            resp = requests.post(
-                GROQ_URL,
-                headers={'Authorization': f'Bearer {key}',
-                         'Content-Type': 'application/json'},
-                json={
-                    'model': GROQ_MODEL,
-                    'messages': messages,
-                    'temperature': temperature,
-                    'max_tokens': max_tokens,
-                    'top_p': 0.9,
-                    'stream': False,
-                },
-                timeout=60,
-            )
+                import traceback
+                traceback.print_exc()
+                raise
+            
+            print("HTTP Status:", resp.status_code)
+            print(resp.text[:1000])
             if resp.status_code == 200:
                 data = resp.json()
-                choices = data.get('choices', [])
-                if choices:
-                    return choices[0]['message']['content']
-
-            elif resp.status_code == 429:
-                print("Groq Rate Limit:", resp.status_code)
-                print(resp.text)
-                continue
-
+                if 'message' in data and 'content' in data['message']:
+                    parsed_text = data['message']['content']
+                    print("="*80)
+                    print("PARSED AI RESPONSE:")
+                    print(parsed_text)
+                    print("="*80)
+                    return parsed_text
             else:
-                print("Groq Error:", resp.status_code)
-                print(resp.text)
+                print(f"Ollama Error: {resp.status_code} - {resp.text}")
+                time.sleep(2 ** attempt)
                 continue
         except Exception as e:
-            print("Groq Exception:", e)
+            print(f"Ollama Exception: {e}")
+            time.sleep(1)
             continue
-    # Fallback to mock if API calls fail
-    print("All Groq API calls failed.")
-    return "AI summary unavailable because no Groq API key is configured."
+    print("All Ollama API calls failed.")
+    return "AI response unavailable because Ollama API calls failed."
 
 
 # ─────────────────────────────────────────
@@ -451,12 +424,74 @@ def get_papers(user_id):
         return jsonify({'error': str(e)}), 500
 
 
+def generate_summary_for_paper(p):
+    import re
+    if p.summary != "Summary will be generated when requested.":
+        return
+        
+    print(f"Generating summary for paper {p.id} on demand...")
+    system_prompt = '''You are ResearchAI. Explain papers in simple, clear language with no jargon. Generate a detailed summary of approximately 300-400 words. Do NOT invent information. Do NOT repeat sentences.'''
+    
+    extracted_text = p.content
+    abstract = p.abstract if p.abstract and p.abstract != "Abstract not found." else ""
+    introduction = ""
+    intro_match = re.search(r'(?i)\b(?:1\.\s*)?Introduction\b([\s\S]*?)(?=\b(?:2\.|II\.|Background|Methods|Related Work)\b)', extracted_text)
+    if intro_match:
+        introduction = intro_match.group(1).strip()
+        
+    conclusion = ""
+    conc_match = re.search(r'(?i)\b(?:Conclusion|Conclusions|Concluding Remarks)\b([\s\S]*?)(?=\b(?:References|Bibliography|Acknowledgment|Appendix)\b)', extracted_text[len(extracted_text)//2:])
+    if conc_match:
+        conclusion = conc_match.group(1).strip()
+
+    if abstract or introduction or conclusion:
+        paper_content = f"ABSTRACT:\n{abstract[:1500]}\n\nINTRODUCTION:\n{introduction[:1500]}\n\nCONCLUSION:\n{conclusion[:1500]}"
+    else:
+        paper_content = extracted_text[:2000]
+
+    user_prompt = "Provide a detailed summary of this paper containing exactly these sections:\n1. Overview\n2. Problem Statement\n3. Methodology\n4. Key Findings\n5. Advantages\n6. Limitations\n7. Future Scope\n8. Conclusion\n\nPaper text:\n" + _clip(paper_content)
+    
+    summary = ollama_chat([
+        {'role': 'system', 'content': system_prompt},
+        {'role': 'user', 'content': user_prompt}
+    ], max_tokens=800)
+    
+    if not summary or len(summary.split()) < 250:
+        print("Summary too short, retrying...")
+        summary = ollama_chat([
+            {'role': 'system', 'content': system_prompt},
+            {'role': 'user', 'content': user_prompt + "\n\nWARNING: Your previous summary was too short. You MUST write between 300 and 400 words total."}
+        ], max_tokens=800)
+        
+    if not summary or len(summary.strip()) < 20:
+        summary = "Summary generation failed or the API returned an empty response."
+
+    p.summary = summary
+    db.session.commit()
+
+
+@app.route('/papers/<int:paper_id>/generate_summary', methods=['POST'])
+def generate_summary_endpoint(paper_id):
+    try:
+        p = Paper.query.get(paper_id)
+        if not p:
+            return jsonify({'error': 'Paper not found'}), 404
+            
+        generate_summary_for_paper(p)
+            
+        return jsonify({'summary': p.summary}), 200
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/papers/detail/<int:paper_id>', methods=['GET'])
 def get_paper_detail(paper_id):
     try:
         p = Paper.query.get(paper_id)
         if not p:
             return jsonify({'error': 'Paper not found'}), 404
+            
         return jsonify({
             'id': p.id, 'file_name': p.file_name, 'title': p.title,
             'authors': p.authors, 'year': p.year, 'content': p.content,
@@ -510,13 +545,24 @@ def renumber_references(ref_text):
 
 @app.route('/papers/analyze', methods=['POST'])
 def analyze_paper():
-    """Analyze paper using PyMuPDF and Groq as the single source of truth."""
+    """Analyze paper using PyMuPDF and Ollama as the single source of truth."""
+    print("="*80)
+    print("ENTERED /papers/analyze")
+    print(request.method)
+    print(request.content_type)
+    print("="*80)
+    
+    import time
+    import json
+    import re
+    
+    t_start = time.time()
+    
     try:
         data = request.get_json()
         required = ['user_id', 'file_name', 'file_bytes']
         
         if not data or not all(k in data for k in required):
-            # Fallback if old clients send 'content' instead of 'file_bytes'
             if 'content' in data and 'file_bytes' not in data:
                 pass # We'll handle it
             else:
@@ -525,100 +571,170 @@ def analyze_paper():
         user_id = data['user_id']
         file_name = data['file_name']
         
-        # Determine text content
-        extracted_text = ""
-        if 'file_bytes' in data and data['file_bytes']:
-            # Decode base64 and parse with fitz
-            try:
-                pdf_bytes = base64.b64decode(data['file_bytes'])
-                doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-                for page in doc:
-                    extracted_text += page.get_text("text") + "\n"
-            except Exception as e:
-                return jsonify({'error': f'Failed to read PDF: {str(e)}'}), 400
-        else:
-            extracted_text = data.get('content', '')
-
-        if not extracted_text.strip():
-            return jsonify({'error': 'No text could be extracted from the file.'}), 400
-
-        # Now extract Metadata via Groq
-        meta_json = groq_chat([
-            {'role': 'system', 'content': 'You extract bibliographic metadata. Reply ONLY with raw JSON, no markdown, no explanation.'},
-            {'role': 'user', 'content': 'From this paper return JSON: {"title":"...","authors":"...","year":"YYYY","abstract":"...","keywords":"..."}. If unknown use "".\n\n' + _clip(extracted_text)}
-        ], max_tokens=600, temperature=0.1)
+        t_pdf_start = time.time()
         
+        extracted_text = ""
         title = file_name.rsplit('.', 1)[0]
         authors = ""
-        year = ""
-        abstract = ""
-        keywords = ""
         
-        try:
-            clean_json = meta_json.replace('```json', '').replace('```', '').strip()
-            import json
-            meta = json.loads(clean_json)
-            if meta.get('title'): title = meta.get('title')
-            authors = meta.get('authors', '')
-            year = meta.get('year', '')
-            abstract = meta.get('abstract', '')
-            keywords = meta.get('keywords', '')
-        except Exception:
-            pass # fallback to defaults
+        if 'file_bytes' in data and data['file_bytes']:
+            pdf_bytes = base64.b64decode(data['file_bytes'])
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            
+            # Extract full text
+            for page in doc:
+                extracted_text += page.get_text("text") + "\n"
+                
+        def clean_pdf_text(text):
+            text = re.sub(r'[\u2010-\u2015\-]\n', '', text)
+            text = re.sub(r'[ \t]+', ' ', text)
+            text = re.sub(r'\n{3,}', '\n\n', text)
+            return text
+        extracted_text = clean_pdf_text(extracted_text)
+                
+        t_pdf_end = time.time()
+        
+        t_prompt_start = time.time()
+        
+        context_parts = []
+        if 'doc' in locals() and len(doc) > 0:
+            context_parts.append("--- FIRST PAGE ---\n" + doc[0].get_text("text"))
+            
+        abs_pattern = r'(?i)\b(?:Abstract|ABSTRACT)[\s\:\.\-\u2014]*\n?([\s\S]*?)(?=\b(?:Keywords|Index Terms|Key Words|Key Terms|Introduction|I\.\s*INTRODUCTION|1\.\s*INTRODUCTION|1\s*INTRODUCTION)\b)'
+        abs_match = re.search(abs_pattern, extracted_text)
+        if abs_match: context_parts.append("--- ABSTRACT ---\n" + abs_match.group(1).strip())
+        
+        kw_pattern = r'(?i)\b(?:Keywords|KEY WORDS|Key words|Key Terms|Key terms|Index Terms|INDEX TERMS)[\s\:\.\-\u2014]*\n?([\s\S]*?)(?=\n\n|\n[A-Z0-9]|\b(?:Introduction|I\.\s*INTRODUCTION|1\.\s*INTRODUCTION)\b)'
+        kw_match = re.search(kw_pattern, extracted_text)
+        if kw_match: context_parts.append("--- KEYWORDS ---\n" + kw_match.group(1).strip())
+        
+        intro_match = re.search(r'(?i)\b(?:1\.\s*)?Introduction\b([\s\S]*?)(?=\b(?:2\.|II\.|Background|Methods|Related Work)\b)', extracted_text)
+        if intro_match: context_parts.append("--- INTRODUCTION ---\n" + intro_match.group(1).strip()[:800])
+        
+        conc_match = re.search(r'(?i)\b(?:Conclusion|Conclusions|Concluding Remarks)\b([\s\S]*?)(?=\b(?:References|Bibliography|Acknowledgment|Appendix)\b)', extracted_text[len(extracted_text)//2:])
+        if conc_match: context_parts.append("--- CONCLUSION ---\n" + conc_match.group(1).strip())
+        
+        ref_match = re.search(r'(?i)\b(?:References|Bibliography)\b\s*\n([\s\S]*)', extracted_text[len(extracted_text)//2:])
+        if ref_match: 
+            context_parts.append("--- REFERENCES ---\n" + ref_match.group(1).strip())
+        elif len(extracted_text) > 1500:
+            context_parts.append("--- REFERENCES (END OF DOC) ---\n" + extracted_text[-1500:])
+        else:
+            context_parts.append("--- REFERENCES (END OF DOC) ---\n" + extracted_text)
+            
+        optimized_context = "\n\n".join(context_parts)
+        if len(optimized_context) > 5000:
+            optimized_context = optimized_context[:5000]
+            
+        char_count = len(optimized_context)
+        print("\n" + "="*50)
+        print("Prompt Length:")
+        print(f"Character Count: {char_count}")
+        print(f"Estimated Tokens: {char_count // 4}")
+        print("="*50 + "\n")
+            
+        t_prompt_end = time.time()
+        
+        t_python_meta_start = time.time()
+        title = file_name.rsplit('.', 1)[0]
+        authors = "Unknown Authors"
+        
+        first_page = doc[0].get_text("text") if 'doc' in locals() and len(doc) > 0 else extracted_text[:2000]
+        year_match = re.search(r'\b(19|20)\d{2}\b', first_page)
+        year = year_match.group(0) if year_match else ""
+        
+        abstract = abs_match.group(1).strip() if abs_match else "Abstract not found."
+        
+        keywords = ""
+        if kw_match:
+            keywords = kw_match.group(1).strip()
+        elif abstract != "Abstract not found.":
+            after_abs = extracted_text[abs_match.end():abs_match.end()+200]
+            if ',' in after_abs or ';' in after_abs:
+                first_lines = after_abs.strip().split('\n')[:2]
+                keywords = " ".join(first_lines).strip()
+        if not keywords: keywords = "Keywords not found."
+        
+        raw_refs_text = ref_match.group(1).strip() if ref_match else ""
+        if raw_refs_text:
+            lines = [line.strip() for line in raw_refs_text.split('\n') if line.strip()]
+            ref_list = []
+            current_ref = ""
+            for line in lines:
+                if re.match(r'^\[?\d+\]?', line) or re.match(r'^\d+\.', line):
+                    if current_ref: ref_list.append(current_ref)
+                    current_ref = line
+                else:
+                    if current_ref: current_ref += " " + line
+            if current_ref: ref_list.append(current_ref)
+            if not ref_list: ref_list = lines[:5]
+            references = "\n\n".join(ref_list[:5])
+        else:
+            references = "References not found."
+            
+        t_python_meta_end = time.time()
+        
+        t_summary_start = time.time()
+        
+        summ_context_parts = []
+        if abstract != "Abstract not found.": summ_context_parts.append("--- ABSTRACT ---\n" + abstract[:1000])
+        if intro_match: summ_context_parts.append("--- INTRODUCTION ---\n" + intro_match.group(1).strip()[:1000])
+        if conc_match: summ_context_parts.append("--- CONCLUSION ---\n" + conc_match.group(1).strip()[:1000])
+        
+        summ_context = "\n\n".join(summ_context_parts)
+        if len(summ_context) < 1500:
+            summ_context += "\n\n--- PAPER CONTENT ---\n" + extracted_text[1000:4000]
+            
+        summ_context = summ_context[:4000]
+        
+        needs_keywords = (keywords == "Keywords not found.")
+        system_prompt = '''You are an academic summarizer. Generate a detailed summary of approximately 180-220 words based ONLY on the provided text.
+The summary MUST contain these exact sections:
+Overview:
+Methodology:
+Key Findings:
+Significance:
+Conclusion:'''
+        if needs_keywords:
+            system_prompt += '''\n\nYou MUST also generate 6-10 relevant keywords. Output them at the very beginning in this format:
+KEYWORDS: word1, word2, word3
 
-        # Guarantee fallback for Abstract
-        if not abstract or len(abstract.strip()) < 10:
-            abstract = groq_chat([
-                {'role': 'system', 'content': 'You generate concise abstracts. Return ONLY the abstract text.'},
-                {'role': 'user', 'content': 'Generate a concise 1-paragraph abstract for this paper:\n\n' + _clip(extracted_text)}
-            ], max_tokens=400)
-            if not abstract:
-                abstract = "Abstract generation failed, please review the document manually."
+Overview:'''
+        else:
+            system_prompt += '''\nDo NOT output anything else. No JSON, no markdown, just the summary text.'''
 
-        # Guarantee fallback for Keywords
-        if not keywords or len(keywords.strip()) < 3:
-            keywords = groq_chat([
-                {'role': 'system', 'content': 'You generate keywords. Return ONLY a comma separated list of keywords.'},
-                {'role': 'user', 'content': 'Generate 5 keywords for this paper:\n\n' + _clip(extracted_text)}
-            ], max_tokens=100)
-            if not keywords:
-                keywords = "Research, Paper, Unclassified"
+        user_prompt = "Generate the summary for:\n\n" + summ_context
 
-        # Guarantee fallback for Summary
-        summary = groq_chat([
-            {'role': 'system', 'content': 'You are ResearchAI. Explain papers in simple, clear language with no jargon.'},
-            {'role': 'user', 'content': "Summarize this paper in SIMPLE language with short sections: What it's about, Methods, Key findings, Why it matters, Limitations.\n\n" + _clip(extracted_text)}
-        ], max_tokens=1500)
+        summary = ollama_chat([
+            {'role': 'system', 'content': system_prompt},
+            {'role': 'user', 'content': user_prompt}
+        ], max_tokens=400, temperature=0.1)
         
         if not summary or len(summary.strip()) < 20:
-            summary = "Summary generation failed or the API returned an empty response."
+            summary = "Summary generation failed."
+            
+        if needs_keywords and 'KEYWORDS:' in summary:
+            kw_part = re.search(r'KEYWORDS:\s*(.*?)(?=\n\n|\nOverview:)', summary, re.IGNORECASE | re.DOTALL)
+            if kw_part: keywords = kw_part.group(1).strip()
+            summary = re.sub(r'(?i)KEYWORDS:\s*.*?(?=\n\n|\nOverview:)', '', summary, flags=re.DOTALL).strip()
+            
+        t_summary_end = time.time()
+        
+        print("\n" + "="*50)
+        print("ABSTRACT EXTRACTION:")
+        print(f"Found: {'YES' if abstract != 'Abstract not found.' else 'NO'}")
+        print(f"Length: {len(abstract)} characters")
+        print(f"Word Count: {len(abstract.split())}")
+        print("\nKEYWORD EXTRACTION:")
+        print(f"Found: {'YES' if keywords != 'Keywords not found.' else 'NO'}")
+        print(f"Count: {len(keywords.split(',')) if keywords != 'Keywords not found.' else 0}")
+        print("="*50)
 
-        # Extract References
-        # Extract References (maximum 5)
-        references = groq_chat([
-            {
-                'role': 'system',
-                'content': '''You are a reference extractor.
+        t_parse_start = time.time()
+        t_parse_end = time.time()
+        
+        t_db_start = time.time()
 
-        Extract ONLY the first 5 references from the uploaded paper.
-
-        Rules:
-        - Return at most 5 references.
-        - Copy them exactly as they appear.
-        - Do NOT generate new references.
-        - Do NOT complete incomplete references.
-        - Do NOT reformat.
-        - If there are fewer than 5 references, return only those available.
-        - If no References section exists, return exactly:
-        "No references found in the uploaded paper."
-        '''
-            },
-            {
-                'role': 'user',
-                'content': _clip_end(extracted_text)
-            }
-        ], max_tokens=800, temperature=0)
-        references = renumber_references(references)
         paper = Paper(
             user_id=user_id,
             file_name=file_name,
@@ -634,9 +750,31 @@ def analyze_paper():
 
         db.session.add(paper)
         db.session.commit()
-
         
         create_notification(user_id, 'Paper analysis completed', f'Your paper "{paper.title}" has been analyzed and is ready to view.', 'Icons.check_circle_outline', paper.id)
+        t_db_end = time.time()
+        
+        t_end = time.time()
+        
+        print("\n" + "="*50)
+        print("EXTRACTION REPORT")
+        print(f"Abstract Length:      {len(abstract)} characters")
+        print(f"Keyword Count:        {len(keywords.split(',')) if keywords != 'Keywords not found.' else 0}")
+        ref_count = len(re.split(r'\n\n', references)) if references else 0
+        print(f"Reference Count:      {ref_count}")
+        print(f"Summary Word Count:   {len(summary.split())} words")
+        print("="*50)
+
+        print("\n" + "="*50)
+        print("EXECUTION TIMINGS:")
+        print(f"PDF Extraction Time:  {t_pdf_end - t_pdf_start:.2f}s")
+        print(f"Python Metadata Extraction Time: {t_python_meta_end - t_python_meta_start:.2f}s")
+        print(f"Prompt Build Time:    {t_prompt_end - t_prompt_start:.2f}s")
+        print(f"Ollama Response Time: {t_summary_end - t_summary_start:.2f}s")
+        print(f"JSON Parse Time:      {t_parse_end - t_parse_start:.2f}s")
+        print(f"Database Save Time:   {t_db_end - t_db_start:.2f}s")
+        print(f"Total Request Time:   {t_end - t_start:.2f}s")
+        print("="*50 + "\n")
 
         return jsonify({
             'message': 'Paper analyzed',
@@ -656,8 +794,12 @@ def analyze_paper():
         }), 201
 
     except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        print("=" * 80)
+        print("ERROR DURING PAPER ANALYSIS")
+        traceback.print_exc()
+        print("=" * 80)
+        raise
 
 
 
@@ -672,7 +814,7 @@ def paper_citations(paper_id):
         if p.citations:
             return jsonify({'citations': p.citations}), 200
 
-        result = groq_chat([
+        result = ollama_chat([
             {
                 'role': 'system',
                 'content': '''You are an IEEE reference extractor.
@@ -720,7 +862,7 @@ def cite_paper(paper_id):
         p = Paper.query.get(paper_id)
         if not p:
             return jsonify({'error': 'Paper not found'}), 404
-        result = groq_chat([
+        result = ollama_chat([
             {'role': 'system', 'content': f'You generate one accurate {style} citation for the paper.'},
             {'role': 'user',
              'content': f'Generate a single {style}-style citation for THIS paper (the document itself, not its references). Output only the citation text.\n\n' + _clip(p.content)},
@@ -791,6 +933,7 @@ def delete_paper(paper_id):
 @app.route('/papers/<int:paper_id>/chat', methods=['GET'])
 def get_chat(paper_id):
     try:
+        p = Paper.query.get(paper_id)
         msgs = ChatMessage.query.filter_by(paper_id=paper_id)\
             .order_by(ChatMessage.created_at.asc()).all()
         return jsonify([{
@@ -849,10 +992,19 @@ def ask_paper(paper_id):
         # Load history
         history = ChatMessage.query.filter_by(paper_id=paper_id).order_by(ChatMessage.created_at.asc()).all()
 
+        chat_context = f"--- ABSTRACT ---\n{p.abstract}\n\n"
+        chat_context += f"--- KEYWORDS ---\n{p.keywords}\n\n"
+        chat_context += f"--- SUMMARY ---\n{p.summary}\n\n"
+        chat_context += f"--- FIRST 1000 CHARACTERS ---\n{p.content[:1000] if p.content else ''}\n\n"
+        chat_context += f"--- REFERENCES ---\n{p.references}\n\n"
+        
+        if len(chat_context) > 4000:
+            chat_context = chat_context[:4000]
+
         messages = [
             {
                 'role': 'system',
-                'content': 'You are ResearchAI. Answer ONLY from the paper below. If the answer is not in it, say so and mark general info as "(general knowledge)".\n\n=== PAPER ===\n' + _clip(p.content) + '\n=== END ==='
+                'content': 'You are ResearchAI. Answer ONLY from the paper below. If the answer is not in it, say so and mark general info as "(general knowledge)".\n\n=== PAPER ===\n' + chat_context + '\n=== END ==='
             }
         ]
         
@@ -865,9 +1017,9 @@ def ask_paper(paper_id):
             
         messages.append({'role': 'user', 'content': question})
 
-        answer = groq_chat_with_retry(messages, max_tokens=1024, max_retries=3, required_length=1)
+        answer = ollama_chat_with_retry(messages, max_tokens=1024, max_retries=3, required_length=1)
         if not answer:
-            answer = "AI response unavailable because no Groq API key is configured or the service is down."
+            answer = "AI response unavailable because the Ollama service is down."
 
         # Save AI answer to DB
         ai_msg = ChatMessage(paper_id=paper_id, user_id=user_id, role='ai', text=answer)
@@ -1048,7 +1200,7 @@ def get_dashboard(user_id):
 # ─────────────────────────────────────────
 import smtplib
 from email.mime.text import MIMEText
-import random
+import secrets
 
 @app.route('/support', methods=['POST'])
 def submit_support():
@@ -1059,7 +1211,7 @@ def submit_support():
             return jsonify({'error': 'Missing required fields'}), 400
 
         # Generate ticket ID
-        ticket_id = f"SUP-{random.randint(1000, 9999)}"
+        ticket_id = f"SUP-{secrets.randbelow(9000) + 1000}"
         
         # Save to DB first
         support_msg = SupportMessage(
@@ -1123,10 +1275,30 @@ def catch_all(path):
     else:
         return app.send_static_file('index.html')
 
+@app.route('/test_ollama', methods=['POST'])
+def test_ollama():
+    print("="*80)
+    print("ENTERED /test_ollama")
+    print("="*80)
+    try:
+        messages = [{"role": "user", "content": "Say Hello from Ollama"}]
+        response = ollama_chat(messages)
+        return jsonify({
+            "success": True,
+            "response": response
+        }), 200
+    except Exception as e:
+        import traceback
+        print("ERROR IN /test_ollama:")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 if __name__ == '__main__':
+    print(f"Using Ollama model: {OLLAMA_MODEL}")
     with app.app_context():
         db.create_all()
     # Read run port from environment, defaulting to 5000
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=True, host='0.0.0.0', port=port)
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() in ['true', '1', 't']
+    # Binding to 0.0.0.0 is required for containerized/Render deployments
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)  # nosec B104
