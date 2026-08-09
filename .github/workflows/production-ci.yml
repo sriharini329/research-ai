@@ -152,6 +152,11 @@ jobs:
             echo "1. Verifying APK exists..."
             ls -la appium/app/app-release.apk || exit 1
 
+            echo "1.5 Waiting for Emulator to be fully booted..."
+            adb wait-for-device
+            while [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]; do sleep 2; done
+            adb devices
+
             echo "2. Installing APK manually via ADB..."
             adb install -r appium/app/app-release.apk || exit 1
 
@@ -162,20 +167,24 @@ jobs:
             echo "4. Starting Appium server and waiting for it to be fully ready..."
             appium --log-level error:error &
             APPIUM_PID=$!
-            sleep 20
+            while ! curl -s http://127.0.0.1:4723/status >/dev/null; do sleep 2; done
             curl -s http://127.0.0.1:4723/status || exit 1
 
             echo "5. Executing Android E2E Tests..."
             cd appium
+            echo "Running Smoke Tests..."
+            npm run test:smoke || exit 1
+            
+            echo "Running Full Suite..."
             npx mocha --config .mocharc.json --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-android,html=true,json=true || true
             cd ..
 
             echo "6. Shutting down Appium gracefully..."
             [ -n "$APPIUM_PID" ] && kill -9 $APPIUM_PID || true
-            pkill -f appium || true
             sleep 2
 
       - name: Upload Artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: android-report
@@ -183,6 +192,7 @@ jobs:
 
   generate-reports:
     needs: [backend-tests, flutter-tests, web-e2e-tests, android-e2e-tests]
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
