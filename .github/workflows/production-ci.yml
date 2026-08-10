@@ -132,14 +132,24 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Install Appium Node Dependencies
-        working-directory: ./appium
+        working-directory: appium
         run: |
-          npm install
+          npm ci
           npm install -g appium
           appium driver install uiautomator2
           appium driver install --source=npm appium-flutter-driver
           mkdir -p app
           cp ../build/app/outputs/flutter-apk/app-release.apk app/app-release.apk
+
+      - name: Verify Appium project
+        working-directory: appium
+        run: |
+          pwd
+          ls -la
+          test -f package.json
+          cat package.json
+          node --version
+          npm --version
 
       - name: Run Android Emulator & E2E Tests
         uses: reactivecircus/android-emulator-runner@v2
@@ -171,17 +181,20 @@ jobs:
             curl -s http://127.0.0.1:4723/status || exit 1
 
             echo "5. Executing Android E2E Tests..."
-            cd appium
             echo "Running Smoke Tests..."
-            npm run test:smoke || exit 1
+            (cd appium && npm run test:smoke) || exit 1
             
             echo "Running Full Suite..."
-            npx mocha --config .mocharc.json --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-android,html=true,json=true || true
-            cd ..
+            set +e
+            (cd appium && npx mocha --config .mocharc.json --reporter-options reportDir=mochawesome-report,reportFilename=mochawesome-android,html=true,json=true)
+            TEST_EXIT_CODE=$?
+            set -e
 
             echo "6. Shutting down Appium gracefully..."
             [ -n "$APPIUM_PID" ] && kill -9 $APPIUM_PID || true
             sleep 2
+            
+            exit $TEST_EXIT_CODE
 
       - name: Upload Artifact
         if: always()
