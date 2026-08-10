@@ -28,12 +28,33 @@ jobs:
       - name: Install System Dependencies
         run: sudo apt-get update && sudo apt-get install -y mupdf mupdf-tools swig libfreetype6-dev
         
+      - name: Clean Old Results
+        run: rm -rf testing_v2/*/mochawesome-report || true
+
       - name: Start Flask Backend
         run: |
           pip install -r requirements.txt || true
           pip install flask flask-sqlalchemy flask-cors pymysql fitz pymupdf requests python-dotenv werkzeug
           nohup python research_ai_app.py > backend.log 2>&1 &
-          sleep 10
+          
+          echo "Waiting for Flask to boot..."
+          for i in {1..30}; do
+            if curl -s http://127.0.0.1:5000/get_current_user > /dev/null; then
+              echo "Flask backend is up!"
+              break
+            fi
+            echo "Waiting..."
+            sleep 2
+          done
+          
+      - name: Start Flutter Web (Selenium Node)
+        if: matrix.suite == 'selenium'
+        run: |
+          nohup python -m http.server 8080 --directory build/web > frontend.log 2>&1 &
+          for i in {1..15}; do
+            if curl -s http://127.0.0.1:8080 > /dev/null; then break; fi
+            sleep 2
+          done
           
       - name: Install Test Dependencies
         run: |
@@ -42,10 +63,41 @@ jobs:
           cd ${{ matrix.suite }}
           npm install
           
-      - name: Execute ${{ matrix.suite }} Suite
+      - name: Execute API/Validation/Performance/Deployment/Selenium Suites
+        if: matrix.suite != 'appium'
         run: |
           cd testing_v2
           npm run test:${{ matrix.suite }}
+          
+      - name: Enable KVM group perms (Appium)
+        if: matrix.suite == 'appium'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          
+      - name: Run Android Emulator & Appium Tests (Appium)
+        if: matrix.suite == 'appium'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            echo "1. Starting Appium server..."
+            npm install -g appium
+            appium driver install uiautomator2
+            appium --log-level error:error &
+            while ! curl -s http://127.0.0.1:4723/status >/dev/null; do sleep 2; done
+            
+            echo "2. Waiting for emulator boot..."
+            adb wait-for-device
+            while [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]; do sleep 2; done
+            
+            echo "3. Executing Appium Tests..."
+            cd testing_v2
+            npm run test:appium
           
       - name: Upload Suite Artifacts
         if: always()

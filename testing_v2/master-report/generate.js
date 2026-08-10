@@ -24,7 +24,7 @@ async function compileReport() {
                     const status = t.pass ? 'PASS' : (t.fail ? 'FAIL' : 'BLOCKED');
                     if (t.pass) suitePass++;
                     if (t.fail) suiteFail++;
-                    if (t.pending || (!t.pass && !t.fail)) suiteSkip++;
+                    if (t.pending) suiteSkip++;
                     
                     testList.push({
                         title: t.title,
@@ -39,7 +39,7 @@ async function compileReport() {
         summaryData[suite] = { pass: suitePass, fail: suiteFail, skip: suiteSkip };
         detailedData[suite] = testList;
         totalPass += suitePass; totalFail += suiteFail; totalSkip += suiteSkip;
-        totalExec += (suitePass + suiteFail + suiteSkip);
+        totalExec += (suitePass + suiteFail); // Only actual execution counts
     }
 
     const sheet1 = workbook.addWorksheet('Executive Summary');
@@ -51,8 +51,8 @@ async function compileReport() {
     sheet1.addRow(['Passed', totalPass]);
     sheet1.addRow(['Failed', totalFail]);
     sheet1.addRow(['Blocked / Not Applicable', totalSkip]);
-    const passPct = totalExec > 0 ? ((totalPass / totalExec) * 100).toFixed(2) : 0;
-    sheet1.addRow(['Pass Percentage', passPct + '%']);
+    const passPct = totalExec > 0 ? ((totalPass / totalExec) * 100).toFixed(2) + '%' : 'N/A';
+    sheet1.addRow(['Pass Percentage', passPct]);
 
     const sheetNames = {
         'selenium': 'Selenium Web Tests',
@@ -98,8 +98,8 @@ async function compileReport() {
         <p>Total Executed: ${totalExec}</p>
         <p>Passed: ${totalPass}</p>
         <p>Failed: ${totalFail}</p>
-        <p>Blocked/Skipped: ${totalSkip}</p>
-        <p>Pass Percentage: ${passPct}%</p>
+        <p>Blocked/Not Applicable: ${totalSkip}</p>
+        <p>Pass Percentage: ${passPct}</p>
     </body></html>`;
     
     fs.mkdirSync(path.join(__dirname, '../reports'), { recursive: true });
