@@ -1,0 +1,86 @@
+name: Comprehensive Enterprise E2E Testing
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-suites:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [api, validation, performance, deployment, selenium, appium]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Setup Java
+        if: matrix.suite == 'appium'
+        uses: actions/setup-java@v3
+        with: { distribution: "zulu", java-version: "17" }
+        
+      - name: Install System Dependencies
+        run: sudo apt-get update && sudo apt-get install -y mupdf mupdf-tools swig libfreetype6-dev
+        
+      - name: Start Flask Backend
+        run: |
+          pip install -r requirements.txt || true
+          pip install flask flask-sqlalchemy flask-cors pymysql fitz pymupdf requests python-dotenv werkzeug
+          nohup python research_ai_app.py > backend.log 2>&1 &
+          sleep 10
+          
+      - name: Install Test Dependencies
+        run: |
+          cd testing_v2
+          npm install
+          cd ${{ matrix.suite }}
+          npm install
+          
+      - name: Execute ${{ matrix.suite }} Suite
+        run: |
+          cd testing_v2
+          npm run test:${{ matrix.suite }}
+          
+      - name: Upload Suite Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ matrix.suite }}
+          path: testing_v2/${{ matrix.suite }}/mochawesome-report/
+
+  generate-master:
+    needs: test-suites
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - name: Install Master Report Dependencies
+        run: cd testing_v2 && npm install
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with: { path: testing_v2/artifacts }
+      - name: Structure Artifacts
+        run: |
+          for suite in api validation performance deployment selenium appium; do
+            mkdir -p testing_v2/$suite/mochawesome-report
+            cp testing_v2/artifacts/report-$suite/* testing_v2/$suite/mochawesome-report/ || true
+          done
+      - name: Generate Master Report
+        run: cd testing_v2 && npm run report:master
+      - name: Upload Final Master Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: research-ai-master-report
+          path: |
+            testing_v2/Research_AI_E2E_Master_Test_Report.xlsx
+            testing_v2/reports/
